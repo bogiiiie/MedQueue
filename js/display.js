@@ -5,7 +5,7 @@
 const tabButtons = document.querySelectorAll('[role="tab"]');
 
 tabButtons.forEach((tab) => {
-  tab.addEventListener('click', () => {
+  tab.addEventListener('click', async () => {
     // Update active tab styling
     tabButtons.forEach((t) => {
       t.classList.remove('border-b-[#0066FF]', 'text-[#0066FF]');
@@ -19,14 +19,120 @@ tabButtons.forEach((tab) => {
 
     const selectedDept = tab.textContent.trim();
     filterQueueCards(selectedDept);
+    
+    // Update Now Serving section based on selected department
+    await updateNowServingByDepartment(selectedDept);
   });
 });
 
+// ── Update Now Serving hero based on selected department ──
+async function updateNowServingByDepartment(department) {
+  try {
+    const res = await fetch('/api/queue/list');
+    const result = await res.json();
+    
+    if (!result.success) return;
+    
+    const allQueues = result.queues || [];
+    
+    // Get counter statuses
+    const counterRes = await fetch('/api/queue/counter-status');
+    const counterData = await counterRes.json();
+    const counterStatuses = counterData.success ? counterData.counters : [];
+    
+    let nowServing;
+    let assignedCounter = null;
+    let departmentName = department;
+    
+    if (department === 'All') {
+      // Show overall now serving (any department)
+      nowServing = allQueues.find(q => q.status === 'Serving');
+      if (nowServing) {
+        assignedCounter = nowServing.assigned_counter;
+        departmentName = nowServing.department;
+      }
+    } else {
+      // Show now serving only for selected department
+      nowServing = allQueues.find(q => q.status === 'Serving' && q.department === department);
+      if (nowServing) {
+        assignedCounter = nowServing.assigned_counter;
+        departmentName = department;
+      } else {
+        // No active queue for this department, get counter for this department
+        departmentName = department;
+        assignedCounter = getCounterForDepartment(department);
+      }
+    }
+    
+    // Update the hero section
+    const heroQueueEl = document.querySelector('#now-serving-hero .font-mono.font-bold');
+    const heroDeptEl = document.querySelector('#now-serving-hero p.text-gray-500');
+    
+    // Update queue number
+    if (heroQueueEl) {
+      heroQueueEl.textContent = nowServing ? nowServing.queue_number : '—';
+    }
+    
+    // Update department and counter info with status
+    if (heroDeptEl && assignedCounter) {
+      const counterStatus = counterStatuses.find(c => String(c.counter_number) === String(assignedCounter));
+      const isClosed = counterStatus && counterStatus.status === 'closed';
+      
+      if (isClosed) {
+        heroDeptEl.innerHTML = `Counter ${assignedCounter} &nbsp;·&nbsp; ${departmentName} <span class="ml-2 text-xs text-red-500 font-semibold">(CLOSED)</span>`;
+      } else {
+        heroDeptEl.innerHTML = `Counter ${assignedCounter} &nbsp;·&nbsp; ${departmentName}`;
+      }
+    } else if (heroDeptEl) {
+      heroDeptEl.innerHTML = 'Select a department';
+    }
+    
+    // Update Next Up section
+    let waitingQueues;
+    if (department === 'All') {
+      waitingQueues = allQueues.filter(q => q.status === 'Waiting');
+    } else {
+      waitingQueues = allQueues.filter(q => q.status === 'Waiting' && q.department === department);
+    }
+    
+    const nextUp = waitingQueues.length > 0 ? waitingQueues[0] : null;
+    
+    const nextUpEl = document.querySelector('#next-up-bar span.font-mono.text-\\[28px\\]');
+    const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
+    
+    if (nextUpEl) {
+      nextUpEl.textContent = nextUp ? nextUp.queue_number : '—';
+    }
+    
+    if (estWaitEl && nextUp) {
+      const position = waitingQueues.findIndex(q => q.queue_number === nextUp.queue_number) + 1;
+      estWaitEl.textContent = `Est. ${position * 8} min`;
+    } else if (estWaitEl) {
+      estWaitEl.textContent = '—';
+    }
+    
+  } catch (err) {
+    console.error('Failed to update now serving by department:', err);
+  }
+}
+
+// Helper function to get counter for a department
+function getCounterForDepartment(department) {
+  const counterMap = {
+    'General Medicine': '1',
+    'Pediatrics': '2',
+    'Cardiology': '3',
+    'Orthopedics': '4',
+    'Emergency': '1'
+  };
+  return counterMap[department] || '1';
+}
+
+// ── Filter queue cards by department ──
 function filterQueueCards(dept) {
   const cards = document.querySelectorAll('#queue-grid article');
 
   cards.forEach((card) => {
-    // Find the department paragraph (text-xs text-gray-400)
     const deptEl = card.querySelector('p.text-xs.text-gray-400');
     if (!deptEl) {
       card.style.display = '';
@@ -71,6 +177,42 @@ function resetCountdown() {
   }
 }
 
+// ── Load counter statuses for live display ──
+async function loadCounterStatuses() {
+  try {
+    const res = await fetch('/api/queue/counter-status');
+    const data = await res.json();
+    
+    if (data.success && data.counters) {
+      const counterStatuses = data.counters;
+      const nowServingDeptEl = document.querySelector('#now-serving-hero p.text-gray-500');
+      
+      if (nowServingDeptEl) {
+        const currentText = nowServingDeptEl.textContent;
+        const counterMatch = currentText.match(/Counter (\d+)/);
+        
+        if (counterMatch) {
+          const counterNum = counterMatch[1];
+          const counterStatus = counterStatuses.find(c => String(c.counter_number) === counterNum);
+          
+          if (counterStatus && counterStatus.status === 'closed') {
+            // Check if CLOSED indicator already exists
+            if (!currentText.includes('CLOSED')) {
+              // Add red CLOSED text
+              nowServingDeptEl.innerHTML = `${currentText} <span class="ml-2 text-xs text-red-500 font-semibold">CLOSED</span>`;
+            }
+          } else {
+            // Remove CLOSED indicator if counter is open
+            nowServingDeptEl.innerHTML = currentText.replace(/ <span class="ml-2 text-xs text-red-500 font-semibold">CLOSED<\/span>/, '');
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load counter statuses:', err);
+  }
+}
+
 // ── Fetch real queue data from backend ──
 async function refreshQueueData() {
   try {
@@ -96,6 +238,19 @@ async function refreshQueueData() {
     // Render cards
     renderCards(queues);
     
+    // Update now serving details with department and counter
+    if (nowServing) {
+      const detailsEl = document.querySelector('#now-serving-hero p.text-gray-500');
+      if (detailsEl) {
+        const counter = nowServing.counter || `Counter ${nowServing.assigned_counter || '?'}`;
+        const dept = nowServing.department || '—';
+        detailsEl.innerHTML = `${counter} &nbsp;·&nbsp; ${dept}`;
+      }
+    }
+    
+    // Load counter statuses to add CLOSED indicator if needed
+    await loadCounterStatuses();
+    
     // Update footer timestamp
     const updatedEl = document.querySelector('#site-footer time');
     if (updatedEl) {
@@ -119,7 +274,7 @@ async function refreshQueueData() {
 function updateFooterStats(queues) {
   const totalToday = queues.length;
   const waitingQueues = queues.filter(q => q.status === 'Waiting');
-  const avgWaitMinutes = waitingQueues.length * 8; // 8 min per waiting patient
+  const avgWaitMinutes = waitingQueues.length * 8;
   
   const totalSpan = document.querySelector('#site-footer span:first-child strong');
   const avgSpan = document.querySelector('#site-footer span:nth-child(2) strong');
@@ -129,27 +284,14 @@ function updateFooterStats(queues) {
 }
 
 function updateNowServing(queueNumber) {
-  const heroEl = document.querySelector('#now-serving-hero p[aria-live]');
-  if (heroEl) heroEl.textContent = queueNumber;
-  
-  // Also update the counter/department text if needed
-  const detailsEl = document.querySelector('#now-serving-hero p.text-gray-500');
-  if (detailsEl && queueNumber !== '—') {
-    // We don't have counter/dept here, will be set in renderCards
-    // Keep existing or clear
-    if (queueNumber === '—') detailsEl.textContent = 'No active queue';
-  }
+  // This selects the big bold queue number
+  const heroEl = document.querySelector('#now-serving-hero .font-mono.font-bold');
+  if (heroEl) heroEl.textContent = queueNumber || '—';
 }
 
 function updateNextUp(queueNumber) {
-  const nextEl = document.querySelector('#next-up-bar span[aria-live]');
-  if (nextEl) nextEl.textContent = queueNumber;
-  
-  // Update estimated wait
-  const estWaitEl = document.querySelector('#next-up-bar span.text-\\[rgb\\(234\\,108\\,0\\)\\]');
-  if (estWaitEl && queueNumber !== '—') {
-    // Will be updated properly in renderCards
-  }
+  const nextEl = document.querySelector('#next-up-bar span.font-mono.text-\\[28px\\]');
+  if (nextEl) nextEl.textContent = queueNumber || '—';
 }
 
 function renderCards(queues) {
@@ -165,24 +307,13 @@ function renderCards(queues) {
     return;
   }
 
-  // Show last 20 queues or all
   const displayQueues = queues.slice(-20);
   
-  // Find now serving for counter/department details
   const nowServing = queues.find(q => q.status === 'Serving');
   
-  // Update now serving details with counter and department
   if (nowServing) {
-    const detailsEl = document.querySelector('#now-serving-hero p.text-gray-500');
-    if (detailsEl) {
-      const counter = nowServing.counter || 'Counter —';
-      const dept = nowServing.department || '—';
-      detailsEl.textContent = `${counter} · ${dept}`;
-    }
-    
-    // Update estimated wait for next up
     const waitingQueues = queues.filter(q => q.status === 'Waiting');
-    const estWaitEl = document.querySelector('#next-up-bar span.text-\\[rgb\\(234\\,108\\,0\\)\\]');
+    const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
     if (estWaitEl && waitingQueues.length > 0) {
       estWaitEl.textContent = `Est. ${waitingQueues.length * 8} min`;
     } else if (estWaitEl) {
@@ -222,7 +353,6 @@ function renderCards(queues) {
     `;
   }).join('');
 
-  // Re-apply active tab filter
   const activeTab = document.querySelector('[role="tab"][aria-selected="true"]');
   if (activeTab) filterQueueCards(activeTab.textContent.trim());
 }
@@ -250,15 +380,6 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function markCardCompleted(queueNumber) {
-  // Optional: animate or update specific card without full refresh
-  refreshQueueData();
-}
-
-function markCardSkipped(queueNumber) {
-  refreshQueueData();
 }
 
 function showPauseBanner() {

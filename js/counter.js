@@ -6,13 +6,15 @@ const EMAILJS_TURN_TMPL = 'template_ebi2swf';
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
 // ============================================================
-// NEW CODE: Multi-counter support - ADD THIS SECTION
+// VARIABLES - declared once at the top
 // ============================================================
-
-// ── Get logged-in staff counter ──
 let myStaffCounter = null;
 let myStaffDepartment = null;
+let isCounterClosed = false;
 
+// ============================================================
+// STAFF INFO
+// ============================================================
 async function getMyStaffInfo() {
   try {
     const res = await fetch('/api/auth/check', { credentials: 'include' });
@@ -21,20 +23,20 @@ async function getMyStaffInfo() {
       myStaffCounter = data.staff.counter;
       myStaffDepartment = data.staff.department;
       console.log(`Logged in as: Counter ${myStaffCounter} - ${myStaffDepartment}`);
+      return true;
     }
+    return false;
   } catch (err) {
     console.error('Failed to get staff info:', err);
+    return false;
   }
 }
 
 // ============================================================
-// END OF NEW CODE
+// LOAD DASHBOARD DATA
 // ============================================================
-
-// ── Load queue data on page load ──
 async function loadDashboard() {
   try {
-    // Make sure we have staff info
     if (!myStaffCounter) {
       await getMyStaffInfo();
     }
@@ -44,19 +46,14 @@ async function loadDashboard() {
     if (!result.success) return;
 
     const allQueues = result.queues;
-
-    // FILTER: Only show patients assigned to THIS staff's counter
     const myQueues = allQueues.filter(q => String(q.assigned_counter) === String(myStaffCounter));
 
     const serving = myQueues.find(q => q.status === 'Serving');
     const waiting = myQueues.filter(q => q.status === 'Waiting');
 
-    // Render queue table (only my counter's patients)
     renderQueueTable(myQueues);
 
-    // Update Now Serving panel
     if (serving) {
-      // Use current time as serving start time
       const now = new Date();
       const startTime = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
 
@@ -73,15 +70,10 @@ async function loadDashboard() {
       updateCurrentPatientPanel(null);
     }
 
-    // Update remaining count (only my counter)
     updateRemainingCount(waiting.length);
-
-    // Update today's stats (only my counter)
     updateStats(myQueues);
 
     console.log('My staff counter:', myStaffCounter);
-    console.log('All queues:', allQueues);
-    console.log('Queues with assigned_counter:', allQueues.map(q => ({ queue: q.queue_number, assigned: q.assigned_counter })));
     console.log('Filtered my queues:', myQueues);
 
   } catch (err) {
@@ -89,6 +81,9 @@ async function loadDashboard() {
   }
 }
 
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
 function renderQueueTable(queues) {
   const tbody = document.querySelector('#queue-panel tbody');
   if (!tbody) return;
@@ -129,7 +124,6 @@ function updateCurrentPatientPanel(patient) {
   const dds = document.querySelectorAll('#current-patient-panel dl dd');
 
   if (!patient) {
-    // Clear all data when no patient is serving
     if (queueDisplay) queueDisplay.textContent = '—';
     if (dds[0]) dds[0].textContent = '—';
     if (dds[1]) dds[1].textContent = '—';
@@ -139,7 +133,6 @@ function updateCurrentPatientPanel(patient) {
     return;
   }
 
-  // Populate with patient data
   if (queueDisplay) queueDisplay.textContent = patient.queue_number || '—';
   if (dds[0]) dds[0].textContent = patient.patient_name || '—';
   if (dds[1]) {
@@ -174,11 +167,18 @@ function updateStats(queues) {
   if (statDds[2]) statDds[2].textContent = noShows;
 }
 
-// ── Call Next ──
+// ============================================================
+// CALL NEXT BUTTON (with counter closed check)
+// ============================================================
 const callNextBtn = document.querySelector('#queue-panel button');
 
 if (callNextBtn) {
   callNextBtn.addEventListener('click', async () => {
+    if (isCounterClosed) {
+      alert('Counter is closed. Please open counter first to call next patient.');
+      return;
+    }
+    
     callNextBtn.disabled = true;
     callNextBtn.textContent = 'Calling...';
 
@@ -188,7 +188,7 @@ if (callNextBtn) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'call_next',
-          staff_counter: myStaffCounter  // PASS STAFF COUNTER
+          staff_counter: myStaffCounter
         }),
       });
 
@@ -196,7 +196,7 @@ if (callNextBtn) {
         const error = await response.json();
         alert(error.error || 'Failed to call next patient');
       } else {
-        loadDashboard(); // Refresh after successful call
+        loadDashboard();
       }
 
     } catch (err) {
@@ -213,7 +213,9 @@ if (callNextBtn) {
   });
 }
 
-// ── Complete button ──
+// ============================================================
+// COMPLETE BUTTON
+// ============================================================
 const completeBtn = document.querySelector('#now-serving-panel button.bg-green-600');
 
 if (completeBtn) {
@@ -234,7 +236,9 @@ if (completeBtn) {
   });
 }
 
-// ── Skip button ──
+// ============================================================
+// SKIP BUTTON
+// ============================================================
 const skipBtn = document.querySelector('#now-serving-panel button[style*="rgb(234, 108, 0)"]');
 
 if (skipBtn) {
@@ -257,7 +261,9 @@ if (skipBtn) {
   });
 }
 
-// ── Pause Counter ──
+// ============================================================
+// PAUSE COUNTER BUTTON
+// ============================================================
 const pauseBtn = document.querySelector('#counter-subbar button:last-child');
 
 if (pauseBtn) {
@@ -279,29 +285,152 @@ if (pauseBtn) {
   });
 }
 
-// ── Close Counter ──
+// ============================================================
+// CLOSE/OPEN COUNTER BUTTON (with backend persistence)
+// ============================================================
 const closeCounterBtn = document.querySelector('#counter-subbar button:first-of-type');
 const openStatusDot = document.querySelector('#counter-subbar .bg-green-500');
 const openStatusLabel = document.querySelector('#counter-subbar .text-green-600');
 
-if (closeCounterBtn) {
-  closeCounterBtn.addEventListener('click', async () => {
-    const confirmed = window.confirm('Close the counter? No new patients will be routed here.');
-    if (!confirmed) return;
-    try {
-      if (openStatusDot) openStatusDot.classList.replace('bg-green-500', 'bg-gray-400');
-      if (openStatusLabel) {
-        openStatusLabel.textContent = 'CLOSED';
-        openStatusLabel.classList.replace('text-green-600', 'text-gray-500');
-      }
+function updateCounterUI(status) {
+  const closeCounterBtn = document.querySelector('#counter-subbar button:first-of-type');
+  const openStatusDot = document.querySelector('#counter-subbar .bg-green-500');
+  const openStatusLabel = document.querySelector('#counter-subbar .text-green-600');
+  
+  if (status === 'closed') {
+    // Change dot to gray
+    if (openStatusDot) {
+      openStatusDot.classList.remove('bg-green-500');
+      openStatusDot.classList.add('bg-gray-400');
+    }
+    // Change label text and color
+    if (openStatusLabel) {
+      openStatusLabel.textContent = 'CLOSED';
+      openStatusLabel.classList.remove('text-green-600');
+      openStatusLabel.classList.add('text-gray-500');
+    }
+    // Change button text to "Open Counter"
+    if (closeCounterBtn) {
       closeCounterBtn.textContent = 'Open Counter';
+    }
+    isCounterClosed = true;
+  } else {
+    // Change dot to green
+    if (openStatusDot) {
+      openStatusDot.classList.remove('bg-gray-400');
+      openStatusDot.classList.add('bg-green-500');
+    }
+    // Change label text and color
+    if (openStatusLabel) {
+      openStatusLabel.textContent = 'OPEN';
+      openStatusLabel.classList.remove('text-gray-500');
+      openStatusLabel.classList.add('text-green-600');
+    }
+    // Change button text to "Close Counter"
+    if (closeCounterBtn) {
+      closeCounterBtn.textContent = 'Close Counter';
+    }
+    isCounterClosed = false;
+  }
+  
+  console.log(`Counter status updated to: ${status}, button text: ${closeCounterBtn ? closeCounterBtn.textContent : 'not found'}`);
+}
+
+async function loadCounterStatus() {
+  if (!myStaffCounter) {
+    await getMyStaffInfo();
+  }
+  
+  if (!myStaffCounter) {
+    console.log('No staff counter yet, skipping loadCounterStatus');
+    return;
+  }
+  
+  try {
+    const res = await fetch(`/api/queue/counter-status?counter=${myStaffCounter}`);
+    const data = await res.json();
+    if (data.success) {
+      updateCounterUI(data.status);
+    }
+  } catch (err) {
+    console.error('Failed to load counter status:', err);
+  }
+}
+
+if (closeCounterBtn) {
+  const newCloseBtn = closeCounterBtn.cloneNode(true);
+  closeCounterBtn.parentNode.replaceChild(newCloseBtn, closeCounterBtn);
+  
+  newCloseBtn.addEventListener('click', async () => {
+    const newStatus = isCounterClosed ? 'open' : 'closed';
+    const actionText = newStatus === 'closed' ? 'close' : 'open';
+    const confirmed = window.confirm(`${actionText.toUpperCase()} the counter? ${newStatus === 'closed' ? 'No new patients will be routed here.' : 'Ready to receive patients.'}`);
+    if (!confirmed) return;
+    
+    try {
+      const res = await fetch('/api/queue/counter-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          counter: myStaffCounter,
+          status: newStatus
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        updateCounterUI(data.status);
+        const message = data.status === 'closed' ? 'Counter closed. No new patients will be assigned.' : 'Counter opened. Ready to receive patients.';
+        showToast(message);
+      }
     } catch (err) {
-      console.error('Close Counter failed:', err);
+      console.error('Failed to toggle counter status:', err);
+      alert('Failed to update counter status. Please try again.');
     }
   });
 }
 
-// ── Manual Entry ──
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(message) {
+  const existingToast = document.querySelector('#toast-notification');
+  if (existingToast) existingToast.remove();
+  
+  const toast = document.createElement('div');
+  toast.id = 'toast-notification';
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 9999;
+    animation: fadeInOut 3s ease;
+  `;
+  
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateY(20px); }
+      15% { opacity: 1; transform: translateY(0); }
+      85% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(20px); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ============================================================
+// MANUAL ENTRY
+// ============================================================
 const manualInput = document.querySelector('#current-patient-panel input[type="text"]');
 const manualSearch = document.querySelector('#current-patient-panel button.bg-\\[\\#0066FF\\]');
 
@@ -334,6 +463,9 @@ function showVerifiedPatient(data) {
   if (dds[2]) dds[2].textContent = data.department || '—';
 }
 
+// ============================================================
+// MANUAL ENTRY MODAL
+// ============================================================
 function openManualEntryModal() {
   const overlay = document.createElement('div');
   overlay.id = 'manual-entry-overlay';
@@ -447,7 +579,9 @@ function openManualEntryModal() {
   input.focus();
 }
 
-// ── QR Scan ──
+// ============================================================
+// QR SCAN
+// ============================================================
 const scanQrBtn = document.querySelector('#now-serving-panel .flex.gap-2.flex-wrap ~ div button:first-child');
 const manualEntryBtn = document.querySelector('#now-serving-panel .flex.gap-2.flex-wrap ~ div button:last-child');
 const scanQrArea = document.querySelector('button[aria-label="Scan patient QR code"]');
@@ -556,18 +690,16 @@ function closeScanModal() {
   if (overlay) overlay.remove();
 }
 
-// ── Socket.io ──
+// ============================================================
+// SOCKET.IO
+// ============================================================
 const socket = io();
 
 socket.on('queue:new', () => loadDashboard());
-
 socket.on('queue:update', () => loadDashboard());
-
 socket.on('queue:done', () => loadDashboard());
-
 socket.on('queue:skip', () => loadDashboard());
 
-// ── Send "your turn" email via EmailJS ──
 socket.on('send:email:turn', (data) => {
   if (!data.email) return;
   emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TURN_TMPL, {
@@ -579,8 +711,10 @@ socket.on('send:email:turn', (data) => {
   }).catch(err => console.error('Turn email failed:', err));
 });
 
+// ============================================================
+// UPDATE NOW SERVING DISPLAY
+// ============================================================
 function updateNowServing(queueNumber, patientName, department = '—', counter = '—', startTime = '') {
-  // Extract just the number from counter (e.g., "Counter 1" -> "1")
   let counterNumber = counter;
   if (counter && counter !== '—') {
     const match = String(counter).match(/\d+/);
@@ -593,13 +727,11 @@ function updateNowServing(queueNumber, patientName, department = '—', counter 
   const nameEl = document.querySelector('#now-serving-panel p.text-\\[18px\\]');
   if (nameEl) nameEl.textContent = patientName || '—';
 
-  // Update department only (no counter display)
   const deptEl = document.querySelector('#now-serving-panel .text-\\[13px\\].text-gray-500');
   if (deptEl) {
     deptEl.textContent = department;
   }
 
-  // Update start time
   const timeEl = document.querySelector('#now-serving-panel time');
   const timeParent = document.querySelector('#now-serving-panel .font-mono.text-\\[12px\\]');
   if (timeEl && startTime && startTime !== '—') {
@@ -613,9 +745,11 @@ function updateNowServing(queueNumber, patientName, department = '—', counter 
   if (rightQueueEl) rightQueueEl.textContent = queueNumber || '—';
 }
 
-// ── Init ──
-// Wait for staff info before loading dashboard
+// ============================================================
+// INITIALIZATION
+// ============================================================
 (async function init() {
   await getMyStaffInfo();
+  await loadCounterStatus(); 
   await loadDashboard();
 })();

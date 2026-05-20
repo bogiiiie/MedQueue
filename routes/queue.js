@@ -16,60 +16,62 @@ function getCounterByDepartment(department) {
 }
 
 // ── Generate queue number ──
+// New code (with department prefixes)
 router.post('/generate', async (req, res) => {
   try {
-    const { fullname, mobile, department, email } = req.body;
-
-    if (!fullname || !mobile || !department || !email) {
-      return res.status(400).json({ error: 'fullname, mobile, department, and email are required.' });
-    }
-
-    const existing    = await sheets.getAllQueues();
-    const nextNumber  = existing.length + 1;
-    const queueNumber = `Q${String(nextNumber).padStart(3, '0')}`;
+    const { department, fullname, mobile, email } = req.body;
     
-    // Assign counter based on department
-    const assignedCounter = getCounterByDepartment(department);
-    const counter = `Counter ${assignedCounter}`;
-
-    // Count waiting patients for THIS specific counter only
-    const waitingAhead = existing.filter((q) => q.assigned_counter == assignedCounter && q.status === 'Waiting').length;
-    const position = waitingAhead + 1;
-    const avgMinsEach = 8;
-    const minWait = position * avgMinsEach - 5;
-    const maxWait = position * avgMinsEach + 5;
-    const estimatedWait = `${Math.max(0, minWait)} - ${maxWait} minutes`;
-
-    const now       = new Date();
-    const createdAt = now.toISOString().replace('T', ' ').substring(0, 19);
-
-    const entry = {
-      id:               nextNumber,
-      queue_number:     queueNumber,
-      patient_name:     fullname,
-      mobile_number:    mobile,
-      email,
-      department,
-      assigned_counter: assignedCounter,  // NEW FIELD
-      counter,
-      status:           'Waiting',
-      created_at:       createdAt,
+    // Get next queue number - NEW WAY (per department)
+    const queueNumber = await sheets.getNextQueueNumberForDepartment(department);
+    
+    // Counter assignment (fixed per department)
+    const counterAssignment = {
+      'General Medicine': '1',
+      'Pediatrics': '2',
+      'Cardiology': '3',
+      'Orthopedics': '4',
+      'Emergency': '1'
     };
-
-    await sheets.addQueueEntry(entry);
-    req.io.emit('queue:new', { queue_number: queueNumber, department, counter });
-
-    res.json({
-      success: true, queueNumber, fullname, mobile, email, department, counter,
+    const assignedCounter = counterAssignment[department] || '1';
+    
+    // Save to Google Sheets
+    await sheets.addQueueEntry({
+      queue_number: queueNumber,
+      patient_name: fullname,
+      mobile: mobile,
+      email: email,
+      department: department,
       assigned_counter: assignedCounter,
-      position, estimatedWait, status: 'Waiting',
-      generatedAt:   now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      generatedDate: now.toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }),
+      status: 'Waiting',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     });
-
-  } catch (err) {
-    console.error('Generate queue error FULL:', err.stack || err);
-    res.status(500).json({ error: err.message || 'Failed to generate queue number. Please try again.' });
+    
+    // Get position in queue
+    const allQueues = await sheets.getAllQueues();
+    const deptWaitingQueues = allQueues.filter(q => 
+      q.department === department && 
+      q.status === 'Waiting'
+    );
+    const position = deptWaitingQueues.length;
+    const estimatedWait = `${position * 8} min`;
+    
+    res.json({
+      success: true,
+      queueNumber: queueNumber,
+      department: department,
+      counter: assignedCounter,
+      fullname: fullname,
+      mobile: mobile,
+      position: position,
+      estimatedWait: estimatedWait,
+      generatedDate: new Date().toLocaleDateString('en-PH'),
+      generatedAt: new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
+    });
+    
+  } catch (error) {
+    console.error('Queue generation failed:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -219,6 +221,53 @@ router.patch('/update', async (req, res) => {
   } catch (err) {
     console.error('Queue update error:', err);
     res.status(500).json({ error: 'Failed to update queue.' });
+  }
+});
+
+// ── Get counter status (open/closed) ──
+router.get('/counter-status', async (req, res) => {
+  try {
+    const { counter } = req.query;
+    
+    if (!counter) {
+      // Return all counter statuses
+      const allStatuses = await sheets.getAllCounterStatuses();
+      return res.json({ success: true, counters: allStatuses });
+    }
+    
+    // Return specific counter status
+    const status = await sheets.getCounterStatus(counter);
+    res.json({ success: true, counter, status });
+  } catch (err) {
+    console.error('Get counter status error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Update counter status (open/close) ──
+router.post('/counter-status', async (req, res) => {
+  try {
+    const { counter, status } = req.body;
+    
+    if (!counter || !status) {
+      return res.status(400).json({ error: 'counter and status are required' });
+    }
+    
+    if (status !== 'open' && status !== 'closed') {
+      return res.status(400).json({ error: 'status must be "open" or "closed"' });
+    }
+    
+    await sheets.updateCounterStatus(counter, status);
+    
+    // Emit socket event para real-time update sa ibang clients
+    if (req.io) {
+      req.io.emit('counter:status:change', { counter, status });
+    }
+    
+    res.json({ success: true, counter, status });
+  } catch (err) {
+    console.error('Update counter status error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

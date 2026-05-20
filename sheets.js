@@ -189,6 +189,133 @@ async function getStaffByUsername(username) {
   return rows.find((r) => r.username === username) || null;
 }
 
+async function getNextQueueNumberForDepartment(department) {
+  // Department prefix mapping
+  const prefixMap = {
+    'General Medicine': 'GEN',
+    'Pediatrics': 'PED',
+    'Cardiology': 'CARD',
+    'Orthopedics': 'ORTHO',
+    'Emergency': 'EMERG'
+  };
+  
+  const prefix = prefixMap[department];
+  if (!prefix) {
+    throw new Error(`Unknown department: ${department}`);
+  }
+  
+  // Get all queues
+  const allQueues = await getRows(QUEUES_SHEET);
+  
+  // Filter only this department's queues
+  const deptQueues = allQueues.filter(q => q.department === department);
+  
+  // Find the highest number
+  let maxNumber = 0;
+  deptQueues.forEach(queue => {
+    // Extract number from queue_number (e.g., "CARD001" -> 1)
+    const match = queue.queue_number.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num > maxNumber) maxNumber = num;
+    }
+  });
+  
+  // Next number is max + 1 (start at 1 if none exist)
+  const nextNumber = maxNumber + 1;
+  const paddedNumber = nextNumber.toString().padStart(3, '0');
+  
+  return `${prefix}${paddedNumber}`;
+}
+
+// Add this function to sheets.js
+async function getNextQueueNumberForDepartment(department) {
+  // Department prefix mapping
+  const prefixMap = {
+    'General Medicine': 'GEN',
+    'Pediatrics': 'PED',
+    'Cardiology': 'CARD',
+    'Orthopedics': 'ORTHO',
+    'Emergency': 'EMERG'
+  };
+  
+  const prefix = prefixMap[department];
+  if (!prefix) {
+    throw new Error(`Unknown department: ${department}`);
+  }
+  
+  // Get all queues
+  const allQueues = await getRows(QUEUES_SHEET);
+  
+  // Filter only this department's queues
+  const deptQueues = allQueues.filter(q => q.department === department);
+  
+  // Find the highest number
+  let maxNumber = 0;
+  deptQueues.forEach(queue => {
+    // Extract number from queue_number (e.g., "CARD001" -> 1, or old "Q001" -> 1)
+    const match = queue.queue_number.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num > maxNumber) maxNumber = num;
+    }
+  });
+  
+  // Next number is max + 1 (start at 1 if none exist)
+  const nextNumber = maxNumber + 1;
+  const paddedNumber = nextNumber.toString().padStart(3, '0');
+  
+  return `${prefix}${paddedNumber}`;
+}
+
+// Get counter status (open/closed)
+async function getCounterStatus(counterNumber) {
+  try {
+    const rows = await getRows('Counter_Status');
+    const counter = rows.find(r => String(r.counter_number) === String(counterNumber));
+    return counter ? counter.status : 'open'; // Default to open
+  } catch (err) {
+    console.error('Failed to get counter status:', err);
+    return 'open';
+  }
+}
+
+// Update counter status
+async function updateCounterStatus(counterNumber, status) {
+  try {
+    const rows = await getRows('Counter_Status');
+    const existing = rows.find(r => String(r.counter_number) === String(counterNumber));
+    
+    if (existing) {
+      await updateRow('Counter_Status', 'counter_number', String(counterNumber), {
+        status: status,
+        last_updated: new Date().toISOString()
+      });
+    } else {
+      await appendRow('Counter_Status', {
+        counter_number: String(counterNumber),
+        status: status,
+        last_updated: new Date().toISOString()
+      });
+    }
+    
+    console.log(`Counter ${counterNumber} status updated to: ${status}`);
+  } catch (err) {
+    console.error('Failed to update counter status:', err);
+  }
+}
+
+// Get all counter statuses
+async function getAllCounterStatuses() {
+  try {
+    const rows = await getRows('Counter_Status');
+    return rows;
+  } catch (err) {
+    console.error('Failed to get counter statuses:', err);
+    return [];
+  }
+}
+
 module.exports = {
   getAllQueues,
   getQueueByNumber,
@@ -196,4 +323,8 @@ module.exports = {
   updateQueueStatus,
   getQueuesByCounter,
   getStaffByUsername,
+  getNextQueueNumberForDepartment,
+  getCounterStatus,        
+  updateCounterStatus,     
+  getAllCounterStatuses    
 };
