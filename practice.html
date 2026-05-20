@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- ── Primary Meta ── -->
+  <title>MedQueue — Skip the Wait. Queue Online.</title>
+  <meta name="description" content="MedQueue lets you get a hospital queue number online and receive SMS updates when it's almost your turn. No more waiting in line.">
+  <meta name="author" content="MedQueue">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://mediqueue.ph/">
+
+  <!-- ── Open Graph ── -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mediqueue.ph/">
+  <meta property="og:title" content="MedQueue — Skip the Wait. Queue Online.">
+  <meta property="og:description" content="Get your hospital queue number online. Receive an SMS when it's your turn.">
+  <meta property="og:image" content="https://mediqueue.ph/og-image.png">
+  <meta property="og:locale" content="en_PH">
+  <meta property="og:site_name" content="MedQueue">
+
+  <!-- ── Twitter Card ── -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@mediqueue">
+  <meta name="twitter:title" content="MedQueue — Skip the Wait. Queue Online.">
+  <meta name="twitter:description" content="Get your hospital queue number online. Receive an SMS when it's your turn.">
+  <meta name="twitter:image" content="https://mediqueue.ph/og-image.png">
+
+  <!-- ── Icons & Theme ── -->
+  <meta name="theme-color" content="#0066FF">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- ── Structured Data (JSON-LD) ── -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "MedQueue",
+    "url": "https://mediqueue.ph/",
+    "description": "Online hospital queue management system for patients in the Philippines.",
+    "applicationCategory": "HealthApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "PHP"
+    }
+  }
+  </script>
+
+  <link rel="stylesheet" href="practice.css">
+</head>
+
+<body>
+
+  <!-- =========================================================
+       SKIP LINK (keyboard / screen reader users)
+       ========================================================= -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+
+  <!-- =========================================================
+       HEADER / NAV
+       ========================================================= -->
+  <header class="site-header" role="banner">
+    <nav class="nav-inner" aria-label="Main navigation">
+
+      <a href="/" class="nav-logo" aria-label="MedQueue — Go to homepage">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+          class="nav-logo-icon" aria-hidden="true" focusable="false">
+          <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>
+        </svg>
+        MedQueue
+      </a>
+
+      <div class="right">
+
+        <!-- Desktop nav links -->
+        <ul class="nav-links" role="list">
+          <li><a href="/" class="nav-link" aria-current="page">Home</a></li>
+
+          <!-- Departments dropdown -->
+          <li class="has-dropdown">
+            <button
+              id="departments-btn"
+              type="button"
+              class="nav-link"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="departments-menu"
+            >
+              Departments
+              <span class="icon icon--chevron" aria-hidden="true"></span>
+            </button>
+
+            <div
+              id="departments-menu"
+              class="departments-menu"
+              role="menu"
+              aria-label="Departments"
+              hidden
+            >
+              <button type="button" role="menuitem">General Medicine</button>
+              <button type="button" role="menuitem">Pediatrics</button>
+              <button type="button" role="menuitem">Cardiology</button>
+              <button type="button" role="menuitem">Orthopedics</button>
+              <button type="button" role="menuitem">Emergency</button>
+            </div>
+          </li>
+
+          <li><a href="#contact" class="nav-link">Contact</a></li>
+
+          <li aria-hidden="true"><div class="vertical-line"></div></li>
+
+          <li>
+            <button type="button" class="nav-link nav-link--staff-login">Staff Login</button>
+          </li>
+        </ul>
+
+        <!-- Mobile hamburger toggle -->
+        <button
+          id="nav-mobile-toggle"
+          class="nav-mobile-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-menu"
+          aria-label="Open navigation menu"
+        >
+          <span class="icon icon--menu" aria-hidden="true"></span>
+        </button>
+
+      </div>
+    </nav>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="mobile-menu" hidden aria-label="Mobile navigation">
+      <ul role="list">
+        <li><a href="/" class="mobile-nav-link" aria-current="page">Home</a></li>
+
+        <li>
+          <button
+            id="mobile-departments-btn"
+            type="button"
+            class="mobile-nav-link department-btn"
+            aria-haspopup="true"
+            aria-expanded="false"
+            aria-controls="mobile-departments-menu"
+          >
+            Departments
+            <span class="icon icon--chevron" aria-hidden="true"></span>
+          </button>
+
+          <div
+            id="mobile-departments-menu"
+            class="departments-menu"
+            role="menu"
+            aria-label="Departments"
+            hidden
+          >
+            <button type="button" role="menuitem">General Medicine</button>
+            <button type="button" role="menuitem">Pediatrics</button>
+            <button type="button" role="menuitem">Cardiology</button>
+            <button type="button" role="menuitem">Orthopedics</button>
+            <button type="button" role="menuitem">Emergency</button>
+          </div>
+        </li>
+
+        <li><a href="#contact" class="mobile-nav-link">Contact</a></li>
+        <li><button type="button" class="mobile-nav-link">Staff Login</button></li>
+      </ul>
+    </div>
+  </header>
+
+
+  <!-- =========================================================
+       MAIN CONTENT
+       ========================================================= -->
+  <main id="main-content" tabindex="-1">
+    <div class="page-wrapper">
+      <div class="page-grid">
+
+        <!-- ── Queue Stats ── -->
+        <section id="queue-stats" aria-labelledby="stats-heading">
+          <h1 id="stats-heading" class="sr-only">Live Queue Statistics</h1>
+          <div class="stats-row">
+
+            <article id="now-serving-card" class="card" aria-label="Now serving: Queue number Q023">
+              <p class="card-label">Now Serving</p>
+              <p class="card-number" aria-live="polite" aria-atomic="true">Q023</p>
+              <span class="badge-group">
+                <span class="pulse-dot" aria-hidden="true"></span>
+                <span class="badge badge--active">Active</span>
+              </span>
+            </article>
+
+            <article id="next-in-queue-card" class="card" aria-label="Next in queue: Q024">
+              <p class="card-label">Next Up</p>
+              <p class="card-number" aria-live="polite" aria-atomic="true">Q024</p>
+              <span class="badge badge--waiting">Waiting</span>
+            </article>
+
+            <article id="wait-time-card" class="card" aria-label="Average wait time: 28 minutes">
+              <p class="card-label">Avg Wait</p>
+              <p class="card-number card-number--warning">28 min</p>
+              <p class="card-meta">
+                <time datetime="PT2M">Updated 2m ago</time>
+              </p>
+            </article>
+
+          </div>
+        </section>
+
+
+        <!-- ── Queue Status Table ── -->
+        <section id="queue-status" aria-labelledby="queue-status-heading">
+          <div class="card-header">
+            <h2 class="card-title" id="queue-status-heading">Queue Status</h2>
+            <button
+              class="btn btn--ghost btn--sm"
+              type="button"
+              aria-label="Refresh queue list"
+              id="refresh-btn"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                <path d="M21 3v5h-5"/>
+                <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                <path d="M8 16H3v5"/>
+              </svg>
+              Refresh
+            </button>
+          </div>
+
+          <div class="queue-table-wrap" role="region" aria-label="Queue list" tabindex="0">
+            <table class="queue-table">
+              <caption class="sr-only">
+                Current queue list showing queue numbers, departments, counters, and statuses
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Queue No.</th>
+                  <th scope="col">Department</th>
+                  <th scope="col">Counter</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody aria-live="polite" aria-relevant="all">
+                <tr>
+                  <td class="is-mono">Q021</td>
+                  <td>General Medicine</td>
+                  <td>1</td>
+                  <td><span class="badge badge--success">Completed</span></td>
+                </tr>
+                <tr class="is-active" aria-current="true">
+                  <td class="is-mono">Q023</td>
+                  <td>General Medicine</td>
+                  <td>1</td>
+                  <td>
+                    <span class="badge badge--active">
+                      <span class="pulse-dot" aria-hidden="true"></span>
+                      Now Serving
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="is-mono">Q024</td>
+                  <td>Cardiology</td>
+                  <td>3</td>
+                  <td><span class="badge badge--waiting">Waiting</span></td>
+                </tr>
+                <tr>
+                  <td class="is-mono">Q025</td>
+                  <td>Cardiology</td>
+                  <td>4</td>
+                  <td><span class="badge badge--waiting">Waiting</span></td>
+                </tr>
+                <tr>
+                  <td class="is-mono">Q026</td>
+                  <td>General Medicine</td>
+                  <td>1</td>
+                  <td><span class="badge badge--waiting">Waiting</span></td>
+                </tr>
+                <tr>
+                  <td class="is-mono">Q027</td>
+                  <td>Cardiology</td>
+                  <td>2</td>
+                  <td><span class="badge badge--waiting">Waiting</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="table-updated" aria-live="polite">
+            <time datetime="2026-03-15T09:52:59">Last updated 9:52:59 AM</time>
+          </p>
+        </section>
+
+
+        <!-- ── Queue Form ── -->
+        <aside id="queue-form" aria-labelledby="form-heading">
+          <div class="card">
+            <h2 class="card-title" id="form-heading">Generate Queue Number</h2>
+            <p class="card-subtitle" id="form-desc">Fill in your details to get a queue ticket.</p>
+
+            <form
+              class="queue-form"
+              id="generate-queue-form"
+              novalidate
+              aria-describedby="form-desc"
+            >
+
+              <div class="form-field">
+                <label for="department" class="form-label">
+                  Department
+                  <span class="form-required" aria-hidden="true">*</span>
+                </label>
+                <select
+                  id="department"
+                  name="department"
+                  class="form-select"
+                  required
+                  aria-required="true"
+                  aria-describedby="department-error"
+                  autocomplete="off"
+                >
+                  <option value="">Select department...</option>
+                  <option value="general">General Medicine</option>
+                  <option value="pediatrics">Pediatrics</option>
+                  <option value="cardiology">Cardiology</option>
+                  <option value="orthopedics">Orthopedics</option>
+                  <option value="emergency">Emergency</option>
+                </select>
+                <p class="form-error" id="department-error" role="alert" hidden>
+                  Please select a department.
+                </p>
+              </div>
+
+              <div class="form-field">
+                <label for="fullname" class="form-label">
+                  Full Name
+                  <span class="form-required" aria-hidden="true">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="fullname"
+                  name="fullname"
+                  class="form-input"
+                  placeholder="e.g. Juan Dela Cruz"
+                  autocomplete="name"
+                  required
+                  aria-required="true"
+                  aria-describedby="fullname-error"
+                  spellcheck="false"
+                >
+                <p class="form-error" id="fullname-error" role="alert" hidden>
+                  Please enter your full name.
+                </p>
+              </div>
+
+              <div class="form-field">
+                <label for="mobile" class="form-label">
+                  Mobile Number
+                  <span class="form-required" aria-hidden="true">*</span>
+                </label>
+                <input
+                  type="tel"
+                  id="mobile"
+                  name="mobile"
+                  class="form-input"
+                  placeholder="09XX XXX XXXX"
+                  autocomplete="tel"
+                  required
+                  aria-required="true"
+                  aria-describedby="mobile-hint mobile-error"
+                  pattern="^09\d{9}$"
+                  inputmode="numeric"
+                  maxlength="11"
+                >
+                <p class="form-hint-inline" id="mobile-hint">Philippine number e.g. 09171234567</p>
+                <p class="form-error" id="mobile-error" role="alert" hidden>
+                  Please enter a valid 11-digit mobile number.
+                </p>
+              </div>
+
+              <button class="generate-queue-btn" type="submit">
+                Get Queue Number
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                  stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M5 12h14"/>
+                  <path d="m12 5 7 7-7 7"/>
+                </svg>
+              </button>
+
+            </form>
+
+            <p class="form-hint">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.64 3.3 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.72 16z"/>
+              </svg>
+              An SMS notification will be sent to your number.
+            </p>
+
+            <hr class="divider" aria-hidden="true">
+
+            <section aria-labelledby="how-it-works-heading">
+              <h3 id="how-it-works-heading" class="steps-heading">How it works</h3>
+              <ol class="steps-list">
+                <li class="step-item">
+                  <span class="step-number" aria-hidden="true">1</span>
+                  <span class="step-label">Select Department</span>
+                </li>
+                <li class="step-item">
+                  <span class="step-number" aria-hidden="true">2</span>
+                  <span class="step-label">Enter Details</span>
+                </li>
+                <li class="step-item">
+                  <span class="step-number" aria-hidden="true">3</span>
+                  <span class="step-label">Get Your Ticket</span>
+                </li>
+              </ol>
+            </section>
+
+          </div>
+        </aside>
+
+      </div><!-- /page-grid -->
+    </div><!-- /page-wrapper -->
+  </main>
+
+
+  <!-- =========================================================
+       PAGE SWITCHER (fixed bottom-right)
+       ========================================================= -->
+  <div class="page-switcher-wrapper">
+    <div
+      class="page-switcher-menu"
+      id="page-switcher-menu"
+      role="menu"
+      aria-label="Switch page"
+      hidden
+    >
+      <p class="page-switcher-label" role="presentation">Pages</p>
+      <button type="button" role="menuitem" class="page-switcher-item page-switcher-item--active" aria-current="page">
+        Queue Generator
+        <span class="page-switcher-dot" aria-hidden="true"></span>
+      </button>
+      <button type="button" role="menuitem" class="page-switcher-item">Live Display</button>
+      <button type="button" role="menuitem" class="page-switcher-item">Queue Status</button>
+      <button type="button" role="menuitem" class="page-switcher-item">Staff Login</button>
+      <button type="button" role="menuitem" class="page-switcher-item">Counter Dashboard</button>
+    </div>
+
+    <button
+      class="queue-gen-btn"
+      type="button"
+      id="queue-gen-btn"
+      aria-haspopup="menu"
+      aria-expanded="false"
+      aria-controls="page-switcher-menu"
+      aria-label="Switch page — currently on Queue Generator"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+        fill="none" stroke="#0066FF" stroke-width="1.5" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M15 3h6v6"/>
+        <path d="M10 14 21 3"/>
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      </svg>
+      Queue Generator
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+        fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </button>
+  </div>
+
+
+  <!-- =========================================================
+       SCRIPTS
+       ========================================================= -->
+  <script>
+    // ── Mobile nav toggle ──
+    const navToggle  = document.getElementById("nav-mobile-toggle");
+    const mobileMenu = document.getElementById("mobile-menu");
+
+    navToggle.addEventListener("click", () => {
+      const isOpen = !mobileMenu.hidden;
+      mobileMenu.hidden = isOpen;
+      navToggle.setAttribute("aria-expanded", String(!isOpen));
+      navToggle.setAttribute("aria-label", isOpen ? "Open navigation menu" : "Close navigation menu");
+    });
+
+    // ── Desktop departments dropdown ──
+    const deptsBtn  = document.getElementById("departments-btn");
+    const deptsMenu = document.getElementById("departments-menu");
+
+    deptsBtn.addEventListener("click", () => {
+      const isOpen = !deptsMenu.hidden;
+      deptsMenu.hidden = isOpen;
+      deptsBtn.setAttribute("aria-expanded", String(!isOpen));
+    });
+
+    // ── Mobile departments dropdown ──
+    const mobileDeptsBtn  = document.getElementById("mobile-departments-btn");
+    const mobileDeptsMenu = document.getElementById("mobile-departments-menu");
+
+    mobileDeptsBtn.addEventListener("click", () => {
+      const isOpen = !mobileDeptsMenu.hidden;
+      mobileDeptsMenu.hidden = isOpen;
+      mobileDeptsBtn.setAttribute("aria-expanded", String(!isOpen));
+    });
+
+    // ── Page switcher toggle ──
+    const queueGenBtn      = document.getElementById("queue-gen-btn");
+    const pageSwitcherMenu = document.getElementById("page-switcher-menu");
+
+    queueGenBtn.addEventListener("click", () => {
+      const isOpen = !pageSwitcherMenu.hidden;
+      pageSwitcherMenu.hidden = isOpen;
+      queueGenBtn.setAttribute("aria-expanded", String(!isOpen));
+    });
+
+    // ── Close all dropdowns on outside click ──
+    document.addEventListener("click", (e) => {
+      if (!deptsBtn.contains(e.target) && !deptsMenu.contains(e.target)) {
+        deptsMenu.hidden = true;
+        deptsBtn.setAttribute("aria-expanded", "false");
+      }
+      if (!queueGenBtn.contains(e.target) && !pageSwitcherMenu.contains(e.target)) {
+        pageSwitcherMenu.hidden = true;
+        queueGenBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    // ── Close all dropdowns on Escape ──
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      deptsMenu.hidden = true;
+      deptsBtn.setAttribute("aria-expanded", "false");
+      pageSwitcherMenu.hidden = true;
+      queueGenBtn.setAttribute("aria-expanded", "false");
+    });
+
+    // ── Form validation ──
+    const form = document.getElementById("generate-queue-form");
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      let valid = true;
+
+      const department  = document.getElementById("department");
+      const deptError   = document.getElementById("department-error");
+      const fullname    = document.getElementById("fullname");
+      const nameError   = document.getElementById("fullname-error");
+      const mobile      = document.getElementById("mobile");
+      const mobileError = document.getElementById("mobile-error");
+
+      if (!department.value) {
+        deptError.hidden = false;
+        department.setAttribute("aria-invalid", "true");
+        valid = false;
+      } else {
+        deptError.hidden = true;
+        department.removeAttribute("aria-invalid");
+      }
+
+      if (!fullname.value.trim()) {
+        nameError.hidden = false;
+        fullname.setAttribute("aria-invalid", "true");
+        valid = false;
+      } else {
+        nameError.hidden = true;
+        fullname.removeAttribute("aria-invalid");
+      }
+
+      if (!/^09\d{9}$/.test(mobile.value.trim())) {
+        mobileError.hidden = false;
+        mobile.setAttribute("aria-invalid", "true");
+        valid = false;
+      } else {
+        mobileError.hidden = true;
+        mobile.removeAttribute("aria-invalid");
+      }
+
+      if (valid) {
+        // TODO: POST to backend
+        console.log("Queue form submitted");
+      }
+    });
+  </script>
+
+</body>
+</html>
