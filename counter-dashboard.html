@@ -108,39 +108,39 @@
 
 
     <!-- =========================================================
-       COUNTER SUBBAR
-       ========================================================= -->
-    <div class="bg-white border-b border-gray-200 h-11 flex items-center" id="counter-subbar">
-        <div class="max-w-[1280px] mx-auto px-6 w-full flex items-center justify-between">
+   COUNTER SUBBAR
+   ========================================================= -->
+    <div class="bg-white border-b border-gray-200 min-h-11 flex items-center" id="counter-subbar">
+        <div class="max-w-[1280px] mx-auto px-6 w-full flex items-center justify-between gap-3 flex-wrap py-2">
 
             <!-- Counter info -->
-            <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-gray-900">—</span>
-                <span class="text-gray-400 text-sm" aria-hidden="true">·</span>
-                <span class="text-sm text-gray-500">—</span>
+            <div class="flex items-center gap-2 min-w-0">
+                <span class="text-sm font-semibold text-gray-900 truncate">—</span>
+                <span class="text-gray-400 text-sm shrink-0" aria-hidden="true">·</span>
+                <span class="text-sm text-gray-500 truncate">—</span>
             </div>
 
             <!-- Counter controls -->
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 shrink-0">
                 <div class="flex items-center gap-1.5 mr-2">
-                    <span class="inline-block w-2 h-2 rounded-full bg-green-500" aria-hidden="true"></span>
+                    <span class="inline-block w-2 h-2 rounded-full bg-green-500 shrink-0" aria-hidden="true"></span>
                     <span class="text-[12px] font-semibold text-green-600">OPEN</span>
                 </div>
                 <button
-                    class="h-8 px-3 text-[13px] font-medium border border-gray-200 rounded-[7px] cursor-pointer hover:bg-gray-50 active:bg-gray-50 text-gray-700 transition-colors"
+                    class="h-8 px-3 text-[13px] font-medium border border-gray-200 rounded-[7px] cursor-pointer hover:bg-gray-50 active:bg-gray-50 text-gray-700 transition-colors whitespace-nowrap"
                     type="button">
                     Close Counter
                 </button>
                 <button
                     class="flex items-center gap-1.5 h-8 px-3 text-[13px] font-medium text-gray-500 rounded-[7px] cursor-pointer hover:bg-gray-100 active:bg-gray-100 transition-colors"
-                    type="button">
+                    type="button" aria-label="Pause">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
                         aria-hidden="true">
                         <rect x="14" y="4" width="4" height="16" rx="1" />
                         <rect x="6" y="4" width="4" height="16" rx="1" />
                     </svg>
-                    Pause
+                    <span class="hidden sm:inline">Pause</span>
                 </button>
             </div>
 

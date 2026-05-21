@@ -20,6 +20,35 @@ tabButtons.forEach((tab) => {
   });
 });
 
+// ── Standalone: stamp CLOSED onto the dept line if counter is closed ──
+async function stampClosedIfNeeded() {
+  const nowServingDeptEl = document.querySelector('#now-serving-hero p.text-gray-500');
+  if (!nowServingDeptEl) return;
+
+  // Always wipe any existing CLOSED span first
+  nowServingDeptEl.innerHTML = nowServingDeptEl.innerHTML
+    .replace(/<span[^>]*>CLOSED<\/span>/g, '')
+    .trim();
+
+  const counterMatch = nowServingDeptEl.textContent.match(/Counter (\d+)/);
+  if (!counterMatch) return;
+
+  try {
+    const res = await fetch('/api/queue/counter-status');
+    const data = await res.json();
+    if (!data.success || !data.counters) return;
+
+    const counterNum = counterMatch[1];
+    const counterStatus = data.counters.find(c => String(c.counter_number) === counterNum);
+
+    if (counterStatus && counterStatus.status === 'closed') {
+      nowServingDeptEl.innerHTML += ` <span style="margin-left:6px; font-size:11px; font-weight:700; color:#DC2626; letter-spacing:0.05em;">CLOSED</span>`;
+    }
+  } catch (err) {
+    console.error('Failed to check counter status:', err);
+  }
+}
+
 // ── Update Now Serving hero based on selected department ──
 async function updateNowServingByDepartment(department) {
   showLoader();
@@ -53,9 +82,9 @@ async function updateNowServingByDepartment(department) {
 
     // Update now serving hero
     const heroQueueEl = document.getElementById('now-serving-number');
-if (heroQueueEl) {
-  heroQueueEl.textContent = nowServing ? nowServing.queue_number : '—';
-}
+    if (heroQueueEl) {
+      heroQueueEl.textContent = nowServing ? nowServing.queue_number : '—';
+    }
 
     // Update counter + department line
     const heroDeptEl = document.querySelector('#now-serving-hero p.text-gray-500');
@@ -72,13 +101,20 @@ if (heroQueueEl) {
       }
     }
 
+    // Always check and stamp CLOSED if needed after writing the dept line
+    await stampClosedIfNeeded();
+
     // Update next up bar
     const nextUpEl = document.querySelector('#next-up-bar span.font-mono.text-\\[28px\\]');
     if (nextUpEl) nextUpEl.textContent = nextUp ? nextUp.queue_number : '—';
 
     const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
     if (estWaitEl) {
-      estWaitEl.textContent = nextUp ? `Est. ${(waitingQueues.indexOf(nextUp) + 1) * 8} min` : '—';
+      if (nextUp) {
+        estWaitEl.textContent = `Est. ${(waitingQueues.indexOf(nextUp) + 1) * 8} min`;
+      } else {
+        estWaitEl.textContent = 'No waiting patients';
+      }
     }
 
     // Re-render cards filtered to this department
@@ -112,9 +148,9 @@ function filterQueueCards(dept) {
       card.style.display = '';
       return;
     }
-    
+
     const cardDept = deptEl.textContent.trim();
-    
+
     if (dept === 'All' || cardDept === dept) {
       card.style.display = '';
     } else {
@@ -130,7 +166,7 @@ let countdownInterval;
 
 function startCountdown() {
   if (countdownInterval) clearInterval(countdownInterval);
-  
+
   countdownInterval = setInterval(() => {
     secondsLeft--;
     if (countdownEl) {
@@ -151,68 +187,32 @@ function resetCountdown() {
   }
 }
 
-// ── Load counter statuses for live display ──
-async function loadCounterStatuses() {
-  try {
-    const res = await fetch('/api/queue/counter-status');
-    const data = await res.json();
-    
-    if (data.success && data.counters) {
-      const counterStatuses = data.counters;
-      const nowServingDeptEl = document.querySelector('#now-serving-hero p.text-gray-500');
-      
-      if (nowServingDeptEl) {
-        const currentText = nowServingDeptEl.textContent;
-        const counterMatch = currentText.match(/Counter (\d+)/);
-        
-        if (counterMatch) {
-          const counterNum = counterMatch[1];
-          const counterStatus = counterStatuses.find(c => String(c.counter_number) === counterNum);
-          
-          if (counterStatus && counterStatus.status === 'closed') {
-            // Check if CLOSED indicator already exists
-            if (!currentText.includes('CLOSED')) {
-              // Add red CLOSED text
-              nowServingDeptEl.innerHTML = `${currentText} <span class="ml-2 text-xs text-red-500 font-semibold">CLOSED</span>`;
-            }
-          } else {
-            // Remove CLOSED indicator if counter is open
-            nowServingDeptEl.innerHTML = currentText.replace(/ <span class="ml-2 text-xs text-red-500 font-semibold">CLOSED<\/span>/, '');
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Failed to load counter statuses:', err);
-  }
-}
-
 // ── Fetch real queue data from backend ──
 async function refreshQueueData() {
   showLoader();
   try {
     const res = await fetch('/api/queue/list');
     const result = await res.json();
-    
+
     if (!result.success) {
       console.error('Failed to load queue data:', result.error);
       return;
     }
-    
+
     const queues = result.queues || [];
-    
+
     // Find now serving and next up
     const nowServing = queues.find(q => q.status === 'Serving');
     const waitingQueues = queues.filter(q => q.status === 'Waiting');
     const nextUp = waitingQueues.length > 0 ? waitingQueues[0] : null;
-    
+
     // Update hero sections
     updateNowServing(nowServing ? nowServing.queue_number : '—');
     updateNextUp(nextUp ? nextUp.queue_number : '—');
-    
+
     // Render cards
     renderCards(queues);
-    
+
     // Update now serving details with department and counter
     if (nowServing) {
       const detailsEl = document.querySelector('#now-serving-hero p.text-gray-500');
@@ -222,10 +222,10 @@ async function refreshQueueData() {
         detailsEl.innerHTML = `${counter} &nbsp;·&nbsp; ${dept}`;
       }
     }
-    
-    // Load counter statuses to add CLOSED indicator if needed
-    await loadCounterStatuses();
-    
+
+    // Always check and stamp CLOSED if needed after writing the dept line
+    await stampClosedIfNeeded();
+
     // Update footer timestamp
     const updatedEl = document.querySelector('#site-footer time');
     if (updatedEl) {
@@ -234,13 +234,13 @@ async function refreshQueueData() {
       updatedEl.textContent = `Updated ${timeStr}`;
       updatedEl.setAttribute('datetime', now.toISOString());
     }
-    
+
     // Update total and avg wait in footer
     updateFooterStats(queues);
-    
+
     hideLoader();
     resetCountdown();
-    
+
   } catch (err) {
     console.error('Refresh failed:', err);
     resetCountdown();
@@ -251,10 +251,10 @@ function updateFooterStats(queues) {
   const totalToday = queues.length;
   const waitingQueues = queues.filter(q => q.status === 'Waiting');
   const avgWaitMinutes = waitingQueues.length * 8;
-  
+
   const totalSpan = document.querySelector('#site-footer span:first-child strong');
   const avgSpan = document.querySelector('#site-footer span:nth-child(2) strong');
-  
+
   if (totalSpan) totalSpan.textContent = totalToday;
   if (avgSpan) avgSpan.textContent = `${avgWaitMinutes} min`;
 }
@@ -283,33 +283,30 @@ function renderCards(queues) {
   }
 
   const displayQueues = queues.slice(-20);
-  
-  const nowServing = queues.find(q => q.status === 'Serving');
-  
-  if (nowServing) {
-    const waitingQueues = queues.filter(q => q.status === 'Waiting');
-    const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
-    if (estWaitEl && waitingQueues.length > 0) {
-      estWaitEl.textContent = `Est. ${waitingQueues.length * 8} min`;
-    } else if (estWaitEl) {
-      estWaitEl.textContent = 'No waiting patients';
-    }
+
+  // Always update the est. wait regardless of whether someone is serving
+  const waitingQueues = queues.filter(q => q.status === 'Waiting');
+  const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
+  if (estWaitEl) {
+    estWaitEl.textContent = waitingQueues.length > 0
+      ? `Est. ${waitingQueues.length * 8} min`
+      : 'No waiting patients';
   }
 
   grid.innerHTML = displayQueues.map((q) => {
-    const isServing   = q.status === 'Serving';
+    const isServing = q.status === 'Serving';
     const isCompleted = q.status === 'Completed';
-    const isSkipped   = q.status === 'Skipped';
-    const isDone      = isCompleted || isSkipped;
+    const isSkipped = q.status === 'Skipped';
+    const isDone = isCompleted || isSkipped;
 
     return `
       <article
         class="${isDone
-          ? 'bg-gray-50'
-          : isServing
+        ? 'bg-gray-50'
+        : isServing
           ? 'bg-[#EFF5FF] border-l-2 border-l-[#0066FF]'
           : 'bg-white'
-        } rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+      } rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
         aria-label="Queue ${q.queue_number} — ${q.status}"
         ${isServing ? 'aria-current="true"' : ''}
       >
@@ -384,15 +381,15 @@ function showPauseBanner() {
 // ── Socket.io — Real-time updates ──
 const socket = io();
 
-socket.on('queue:update', (data) => {
+socket.on('queue:update', () => {
   refreshQueueData();
 });
 
-socket.on('queue:done', (data) => {
+socket.on('queue:done', () => {
   refreshQueueData();
 });
 
-socket.on('queue:skip', (data) => {
+socket.on('queue:skip', () => {
   refreshQueueData();
 });
 
