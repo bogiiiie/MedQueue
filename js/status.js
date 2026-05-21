@@ -25,9 +25,13 @@ async function loadQueueStatus(queue) {
     const data = await res.json();
     currentData = data;
     renderStatus(data);
+
+    document.getElementById('page-loader').hidden = true;
+    document.getElementById('main-content').hidden = false;
     
   } catch (err) {
     console.error('Failed to load queue status:', err);
+    document.getElementById('page-loader').hidden = true;
     showError('Could not load your queue status. Please try again.');
   }
 }

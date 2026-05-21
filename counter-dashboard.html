@@ -18,6 +18,28 @@
         .font-mono {
             font-family: "Geist Mono", monospace;
         }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #page-loader {
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-ring {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 4px solid #E5E7EB;
+            border-top-color: #0066FF;
+            animation: spin 0.7s linear infinite;
+        }
     </style>
 </head>
 
@@ -132,9 +154,13 @@
     <main class="max-w-[1280px] mx-auto px-6 py-5" id="main-content">
         <div class="grid grid-cols-1 lg:grid-cols-[60fr_40fr] gap-5" id="page-grid">
 
+            <!-- ── Loader ── -->
+            <div id="page-loader" class="col-span-full">
+                <div class="loader-ring"></div>
+            </div>
 
             <!-- ── LEFT COLUMN ── -->
-            <div class="flex flex-col gap-5" id="left-col">
+            <div class="flex flex-col gap-5" id="left-col" hidden>
 
 
                 <!-- Now Serving Card -->
@@ -272,7 +298,7 @@
 
 
             <!-- ── RIGHT COLUMN ── -->
-            <div class="flex flex-col gap-5" id="right-col">
+            <div class="flex flex-col gap-5" id="right-col" hidden>
 
 
                 <!-- Current Patient Card -->

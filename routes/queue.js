@@ -1,6 +1,6 @@
 const express = require('express');
-const router  = express.Router();
-const sheets  = require('../sheets');
+const router = express.Router();
+const sheets = require('../sheets');
 
 console.log('Queue route loaded');
 
@@ -20,11 +20,9 @@ function getCounterByDepartment(department) {
 router.post('/generate', async (req, res) => {
   try {
     const { department, fullname, mobile, email } = req.body;
-    
-    // Get next queue number - NEW WAY (per department)
+
     const queueNumber = await sheets.getNextQueueNumberForDepartment(department);
-    
-    // Counter assignment (fixed per department)
+
     const counterAssignment = {
       'General Medicine': '1',
       'Pediatrics': '2',
@@ -33,42 +31,46 @@ router.post('/generate', async (req, res) => {
       'Emergency': '1'
     };
     const assignedCounter = counterAssignment[department] || '1';
-    
-    // Save to Google Sheets
+
+    // ✅ FIX: Get position BEFORE adding the new entry
+    const allQueues = await sheets.getAllQueues();
+    const deptWaitingQueues = allQueues.filter(q =>
+      q.department === department && q.status === 'Waiting'
+    );
+    const position = deptWaitingQueues.length + 1; // +1 because they're about to join
+
+    // After getting allQueues and before addQueueEntry:
+    const nextId = allQueues.length + 1;
+
     await sheets.addQueueEntry({
+      id: nextId,                    // ← add this
       queue_number: queueNumber,
       patient_name: fullname,
-      mobile: mobile,
-      email: email,
-      department: department,
+      mobile: mobile,                // addQueueEntry will map this to mobile_number
+      email,
+      department,
       assigned_counter: assignedCounter,
       status: 'Waiting',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     });
-    
-    // Get position in queue
-    const allQueues = await sheets.getAllQueues();
-    const deptWaitingQueues = allQueues.filter(q => 
-      q.department === department && 
-      q.status === 'Waiting'
-    );
-    const position = deptWaitingQueues.length;
+
     const estimatedWait = `${position * 8} min`;
-    
+
     res.json({
       success: true,
-      queueNumber: queueNumber,
-      department: department,
-      counter: assignedCounter,
-      fullname: fullname,
-      mobile: mobile,
-      position: position,
-      estimatedWait: estimatedWait,
+      id: queueNumber,          // ✅ FIX: expose id (using queueNumber as the unique id)
+      queueNumber,
+      department,
+      counter: assignedCounter, // ✅ this was already correct
+      fullname,
+      mobile,
+      position,
+      estimatedWait,
       generatedDate: new Date().toLocaleDateString('en-PH'),
       generatedAt: new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })
     });
-    
+
   } catch (error) {
     console.error('Queue generation failed:', error);
     res.status(500).json({ error: error.message });
@@ -77,15 +79,16 @@ router.post('/generate', async (req, res) => {
 
 // ── Get queue list ──
 router.get('/list', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const { dept, counter } = req.query;
     let queues = await sheets.getAllQueues(dept || null);
-    
+
     // Optional: filter by assigned counter
     if (counter) {
       queues = queues.filter(q => q.assigned_counter == counter);
     }
-    
+
     res.json({ success: true, queues });
   } catch (err) {
     console.error('Queue list error:', err);
@@ -100,12 +103,12 @@ router.get('/status', async (req, res) => {
     if (!queue) return res.status(400).json({ error: 'queue param is required.' });
 
     const entry = await sheets.getQueueByNumber(queue);
-    if (!entry)  return res.status(404).json({ error: 'Queue number not found.' });
+    if (!entry) return res.status(404).json({ error: 'Queue number not found.' });
 
     // Get queues for the SAME assigned counter only
     const sameCounterQueues = await sheets.getAllQueues();
     const myCounterQueues = sameCounterQueues.filter(q => q.assigned_counter === entry.assigned_counter);
-    
+
     const waiting = myCounterQueues.filter((q) => q.status === 'Waiting');
     const serving = myCounterQueues.find((q) => q.status === 'Serving');
     const position = waiting.findIndex((q) => q.queue_number === queue) + 1;
@@ -122,16 +125,16 @@ router.get('/status', async (req, res) => {
 
     res.json({
       success: true,
-      queue_number:   entry.queue_number,
-      patient_name:   entry.patient_name,
-      mobile:         entry.mobile_number,
-      email:          entry.email,
-      department:     entry.department,
+      queue_number: entry.queue_number,
+      patient_name: entry.patient_name,
+      mobile: entry.mobile_number,
+      email: entry.email,
+      department: entry.department,
       assigned_counter: entry.assigned_counter,
-      counter:        entry.counter,
-      status:         entry.status,
-      position:       position || 0,
-      now_serving:    nowServing,
+      counter: entry.counter,
+      status: entry.status,
+      position: position || 0,
+      now_serving: nowServing,
       estimated_wait: estimatedWait,
       nearby,
     });
@@ -149,13 +152,13 @@ router.patch('/update', async (req, res) => {
 
     if (action === 'call_next') {
       const allQueues = await sheets.getAllQueues();
-      
+
       // Get queues for THIS specific counter only
       const myCounterQueues = allQueues.filter(q => q.assigned_counter == staff_counter);
-      
+
       // Find serving patient for this counter
       const serving = myCounterQueues.find((q) => q.status === 'Serving');
-      
+
       // Find waiting patients for this counter
       const waiting = myCounterQueues.filter((q) => q.status === 'Waiting');
 
@@ -174,22 +177,22 @@ router.patch('/update', async (req, res) => {
           req.io.emit('send:email:turn', {
             patient_name: next.patient_name,
             queue_number: next.queue_number,
-            department:   next.department,
-            counter:      next.counter,
-            email:        next.email,
+            department: next.department,
+            counter: next.counter,
+            email: next.email,
           });
         }
 
         req.io.emit('queue:update', {
-          nowServing:  next.queue_number,
+          nowServing: next.queue_number,
           patientName: next.patient_name,
-          department:  next.department,
-          counter:     staff_counter,
+          department: next.department,
+          counter: staff_counter,
         });
-        
+
         return res.json({ success: true, action: 'call_next', queue_number: next.queue_number });
       }
-      
+
       // No waiting patients
       return res.status(404).json({ error: 'No waiting patients for your counter' });
     }
@@ -228,13 +231,13 @@ router.patch('/update', async (req, res) => {
 router.get('/counter-status', async (req, res) => {
   try {
     const { counter } = req.query;
-    
+
     if (!counter) {
       // Return all counter statuses
       const allStatuses = await sheets.getAllCounterStatuses();
       return res.json({ success: true, counters: allStatuses });
     }
-    
+
     // Return specific counter status
     const status = await sheets.getCounterStatus(counter);
     res.json({ success: true, counter, status });
@@ -248,22 +251,22 @@ router.get('/counter-status', async (req, res) => {
 router.post('/counter-status', async (req, res) => {
   try {
     const { counter, status } = req.body;
-    
+
     if (!counter || !status) {
       return res.status(400).json({ error: 'counter and status are required' });
     }
-    
+
     if (status !== 'open' && status !== 'closed') {
       return res.status(400).json({ error: 'status must be "open" or "closed"' });
     }
-    
+
     await sheets.updateCounterStatus(counter, status);
-    
+
     // Emit socket event para real-time update sa ibang clients
     if (req.io) {
       req.io.emit('counter:status:change', { counter, status });
     }
-    
+
     res.json({ success: true, counter, status });
   } catch (err) {
     console.error('Update counter status error:', err);

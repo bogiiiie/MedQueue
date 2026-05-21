@@ -156,18 +156,17 @@ async function getQueueByNumber(queueNumber) {
 }
 
 async function addQueueEntry(data) {
-  // Make sure assigned_counter is included
   const queueData = {
+    id: data.id || '',                          // ← was missing entirely
     queue_number: data.queue_number,
     patient_name: data.patient_name,
-    mobile: data.mobile,
+    mobile_number: data.mobile,                 // ← was 'mobile', sheet expects 'mobile_number'
     email: data.email,
     department: data.department,
-    assigned_counter: data.assigned_counter || '1',  // NEW FIELD
+    assigned_counter: data.assigned_counter || '1',
+    counter: `Counter ${data.assigned_counter || '1'}`, // ← was missing entirely
     status: data.status || 'Waiting',
     created_at: data.created_at || new Date().toISOString(),
-    updated_at: data.updated_at || new Date().toISOString(),
-    ...data
   };
   await appendRow(QUEUES_SHEET, queueData);
 }

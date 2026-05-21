@@ -220,14 +220,24 @@ const completeBtn = document.querySelector('#now-serving-panel button.bg-green-6
 
 if (completeBtn) {
   completeBtn.addEventListener('click', async () => {
+    const nowServing = document.querySelector('#now-serving-heading').textContent.trim();
+    if (!nowServing || nowServing === '—') return;
+
     completeBtn.disabled = true;
     try {
-      const nowServing = document.querySelector('#now-serving-heading').textContent.trim();
-      await fetch('/api/queue/update', {
+      const res = await fetch('/api/queue/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'complete', queue_number: nowServing }),
       });
+
+      if (res.ok) {
+        showCompleteNotif(nowServing);
+        loadDashboard();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to complete.');
+      }
     } catch (err) {
       console.error('Complete failed:', err);
     } finally {
@@ -243,22 +253,72 @@ const skipBtn = document.querySelector('#now-serving-panel button[style*="rgb(23
 
 if (skipBtn) {
   skipBtn.addEventListener('click', async () => {
+    const nowServing = document.querySelector('#now-serving-heading').textContent.trim();
+    if (!nowServing || nowServing === '—') return;
+
     const confirmed = window.confirm('Mark this patient as No Show / Skip?');
     if (!confirmed) return;
+
     skipBtn.disabled = true;
     try {
-      const nowServing = document.querySelector('#now-serving-heading').textContent.trim();
-      await fetch('/api/queue/update', {
+      const res = await fetch('/api/queue/update', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'skip', queue_number: nowServing }),
       });
+
+      if (res.ok) {
+        showSkipNotif(nowServing);
+        loadDashboard();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to skip.');
+      }
     } catch (err) {
       console.error('Skip failed:', err);
     } finally {
       skipBtn.disabled = false;
     }
   });
+}
+
+function showSkipNotif(queueNumber) {
+  const existing = document.getElementById('skip-notif');
+  if (existing) existing.remove();
+
+  const notif = document.createElement('div');
+  notif.id = 'skip-notif';
+  notif.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#FFF7ED;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="#EA6C00" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 4 15 12 5 20 5 4"/>
+          <line x1="19" x2="19" y1="5" y2="19"/>
+        </svg>
+      </div>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">No Show</p>
+        <p style="font-size:12px;color:#6B7280;margin:0;">${queueNumber} marked as no show</p>
+      </div>
+    </div>
+  `;
+  notif.style.cssText = `
+    position:fixed;
+    bottom:80px;
+    right:20px;
+    background:white;
+    border:1px solid #E5E7EB;
+    border-left:3px solid #EA6C00;
+    border-radius:8px;
+    padding:12px 16px;
+    z-index:9999;
+    box-shadow:0 4px 12px rgba(0,0,0,0.08);
+    animation:slideInNotif 0.2s ease;
+  `;
+
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 3000);
 }
 
 // ============================================================
@@ -426,6 +486,52 @@ function showToast(message) {
   
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+function showCompleteNotif(queueNumber) {
+  const existing = document.getElementById('complete-notif');
+  if (existing) existing.remove();
+
+  const notif = document.createElement('div');
+  notif.id = 'complete-notif';
+  notif.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#DCFCE7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </div>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:#111827;margin:0;">Completed</p>
+        <p style="font-size:12px;color:#6B7280;margin:0;">${queueNumber} marked as complete</p>
+      </div>
+    </div>
+  `;
+  notif.style.cssText = `
+    position:fixed;
+    bottom:80px;
+    right:20px;
+    background:white;
+    border:1px solid #E5E7EB;
+    border-left:3px solid #16A34A;
+    border-radius:8px;
+    padding:12px 16px;
+    z-index:9999;
+    box-shadow:0 4px_12px rgba(0,0,0,0.08);
+    animation:slideInNotif 0.2s ease;
+  `;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInNotif {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 3000);
 }
 
 // ============================================================
@@ -749,7 +855,13 @@ function updateNowServing(queueNumber, patientName, department = '—', counter 
 // INITIALIZATION
 // ============================================================
 (async function init() {
-  await getMyStaffInfo();
-  await loadCounterStatus(); 
-  await loadDashboard();
+  try {
+    await getMyStaffInfo();
+    await loadCounterStatus();
+    await loadDashboard();
+  } finally {
+    document.getElementById('page-loader').hidden = true;
+    document.getElementById('left-col').hidden = false;
+    document.getElementById('right-col').hidden = false;
+  }
 })();

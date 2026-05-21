@@ -64,6 +64,32 @@
     .font-mono {
       font-family: "Geist Mono", monospace;
     }
+
+    #page-loader {
+      min-height: 60vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loader-ring {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 4px solid #E5E7EB;
+      border-top-color: #0066FF;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
 
@@ -208,9 +234,14 @@
   <main class="max-w-7xl mx-auto pt-20 p-4" id="main-content">
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_1fr_380px] lg:grid-rows-[auto_1fr] gap-4" id="page-grid">
 
+      <!-- ── Loader ── -->
+      <div id="page-loader" class="col-span-full">
+        <div class="loader-ring"></div>
+      </div>
+
       <!-- ── Queue Stats ── -->
       <section class="col-span-1 lg:col-start-1 lg:col-span-2 lg:row-start-1 order-1 lg:order-none" id="queue-stats"
-        aria-labelledby="stats-heading">
+        aria-labelledby="stats-heading" hidden>
         <h1 id="stats-heading" class="sr-only">Live Queue Statistics</h1>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="stats-row">
@@ -251,7 +282,7 @@
       <!-- ── Queue Status Table ── -->
       <section
         class="col-span-1 lg:col-start-1 lg:col-span-2 lg:row-start-2 bg-white border border-gray-200 p-5 shadow-xs rounded-[10px] order-2 lg:order-none max-h-[523px]"
-        id="queue-status" aria-labelledby="queue-status-heading">
+        id="queue-status" aria-labelledby="queue-status-heading" hidden>
 
         <div class="flex items-center justify-between mb-4" id="queue-status-header">
           <h2 class="text-[15px] font-semibold text-[#111111]" id="queue-status-heading">Queue Status</h2>
@@ -270,7 +301,8 @@
           </button>
         </div>
 
-        <div class="h-[82%] overflow-x-auto overflow-y-scroll block" id="queue-table-wrap" role="region" aria-label="Queue list" tabindex="0">
+        <div class="h-[82%] overflow-x-auto overflow-y-scroll block" id="queue-table-wrap" role="region"
+          aria-label="Queue list" tabindex="0">
           <table class="w-full min-w-[480px]" id="queue-table">
             <caption class="sr-only">
               Current queue list showing queue numbers, departments, counters, and statuses
@@ -370,7 +402,7 @@
       <!-- ── Queue Form ── -->
       <aside
         class="col-span-1 self-start lg:col-start-3 lg:row-start-1 lg:row-span-2 bg-white border border-gray-200 p-5 shadow-xs rounded-[10px] order-3 lg:order-none"
-        id="queue-form-panel" aria-labelledby="queue-form-heading">
+        id="queue-form-panel" aria-labelledby="queue-form-heading" hidden>
 
         <div id="queue-form-card">
 

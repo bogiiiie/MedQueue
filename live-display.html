@@ -36,6 +36,28 @@
         .pulse-ring {
             animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #page-loader {
+            min-height: 60vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loader-ring {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 4px solid #E5E7EB;
+            border-top-color: #0066FF;
+            animation: spin 0.7s linear infinite;
+        }
     </style>
 </head>
 
@@ -103,22 +125,31 @@
                 type="button" role="tab" aria-selected="false">
                 Orthopedics
             </button>
+            <button
+                class="shrink-0 h-10 px-4 text-sm font-medium transition-colors border-b-2 border-b-transparent text-gray-500 cursor-pointer hover:text-gray-700 active:text-gray-700"
+                type="button" role="tab" aria-selected="false">
+                Emergency
+            </button>
 
         </div>
     </nav>
 
+    <!-- ── Loader ── -->
+    <div id="page-loader">
+        <div class="loader-ring"></div>
+    </div>
 
     <!-- =========================================================
        NOW SERVING HERO
        ========================================================= -->
-    <section class="bg-white py-8 text-center" id="now-serving-hero" aria-labelledby="now-serving-label">
+    <section class="bg-white py-8 text-center" id="now-serving-hero" aria-labelledby="now-serving-label" hidden>
         <div class="max-w-[560px] mx-auto px-6">
 
             <p class="font-mono text-[11px] uppercase tracking-widest text-gray-400 mb-3" id="now-serving-label">
                 Now Serving
             </p>
             <p class="font-mono font-bold text-[#0066FF] text-[clamp(64px,10vw,112px)] leading-none inline-block px-6 py-3 rounded-lg pulse-ring"
-                aria-live="polite" aria-atomic="true">
+                id="now-serving-number" aria-live="polite" aria-atomic="true">
                 Q023
             </p>
             <p class="text-[15px] text-gray-500 mt-4">Counter 1 &nbsp;·&nbsp; General Medicine</p>
@@ -130,7 +161,7 @@
     <!-- =========================================================
        NEXT UP BAR
        ========================================================= -->
-    <div class="max-w-[560px] mx-auto px-6" id="next-up-bar">
+    <div class="max-w-[560px] mx-auto px-6" id="next-up-bar" hidden>
         <div class="h-px bg-gray-200"></div>
         <div class="py-3 flex items-center justify-center gap-3">
             <span class="font-mono text-[11px] text-gray-400 uppercase tracking-widest">Next Up</span>
@@ -146,114 +177,116 @@
     <!-- =========================================================
        QUEUE CARDS GRID
        ========================================================= -->
-<main class="max-w-[1280px] mx-auto px-6 py-6" id="main-content">
-    
-    <!-- Add this wrapper div with fixed height and overflow -->
-    <div class="h-[400px] overflow-y-auto overflow-x-hidden pr-1" id="queue-grid-wrapper">
-        
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="queue-grid" role="region"
-            aria-label="Queue cards" aria-live="polite" aria-relevant="all">
+    <main class="max-w-[1280px] mx-auto px-6 py-6" id="main-content" hidden>
 
-            <!-- Completed — Q021 -->
-            <article class="bg-gray-50 rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q021 — Completed">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-400">Q021</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-green-50 text-green-700 border border-green-200">
-                        Completed
-                    </span>
-                </div>
-                <p class="text-sm text-gray-400 line-through mb-0.5">Maria</p>
-                <p class="text-xs text-gray-400">General Medicine</p>
-            </article>
+        <!-- Add this wrapper div with fixed height and overflow -->
+        <div class="h-[400px] overflow-y-auto overflow-x-hidden pr-1" id="queue-grid-wrapper">
 
-            <!-- Completed — Q022 -->
-            <article class="bg-gray-50 rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q022 — Completed">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-400">Q022</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-green-50 text-green-700 border border-green-200">
-                        Completed
-                    </span>
-                </div>
-                <p class="text-sm text-gray-400 line-through mb-0.5">Pedro</p>
-                <p class="text-xs text-gray-400">Pediatrics</p>
-            </article>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="queue-grid" role="region"
+                aria-label="Queue cards" aria-live="polite" aria-relevant="all">
 
-            <!-- Now Serving — Q023 -->
-            <article
-                class="bg-[#EFF5FF] rounded-[10px] border border-blue-200 border-l-2 border-l-[#0066FF] p-4 shadow-[0_0_0_3px_rgba(0,102,255,0.1),0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q023 — Now Serving" aria-current="true">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-900">Q023</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-[#EFF5FF] text-[#0052CC] border border-blue-200">
-                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#0066FF] pulse-dot"
-                            aria-hidden="true"></span>
-                        Now Serving
-                    </span>
-                </div>
-                <p class="text-sm text-gray-600 mb-0.5">Juan</p>
-                <p class="text-xs text-gray-400">General Medicine</p>
-            </article>
+                <!-- Completed — Q021 -->
+                <article
+                    class="bg-gray-50 rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q021 — Completed">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-400">Q021</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-green-50 text-green-700 border border-green-200">
+                            Completed
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-400 line-through mb-0.5">Maria</p>
+                    <p class="text-xs text-gray-400">General Medicine</p>
+                </article>
 
-            <!-- Waiting — Q024 -->
-            <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q024 — Waiting">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-900">Q024</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
-                        Waiting
-                    </span>
-                </div>
-                <p class="text-sm text-gray-600 mb-0.5">Ana</p>
-                <p class="text-xs text-gray-400">Cardiology</p>
-            </article>
+                <!-- Completed — Q022 -->
+                <article
+                    class="bg-gray-50 rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q022 — Completed">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-400">Q022</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-green-50 text-green-700 border border-green-200">
+                            Completed
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-400 line-through mb-0.5">Pedro</p>
+                    <p class="text-xs text-gray-400">Pediatrics</p>
+                </article>
 
-            <!-- Waiting — Q025 -->
-            <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q025 — Waiting">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-900">Q025</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
-                        Waiting
-                    </span>
-                </div>
-                <p class="text-sm text-gray-600 mb-0.5">Jose</p>
-                <p class="text-xs text-gray-400">General Medicine</p>
-            </article>
+                <!-- Now Serving — Q023 -->
+                <article
+                    class="bg-[#EFF5FF] rounded-[10px] border border-blue-200 border-l-2 border-l-[#0066FF] p-4 shadow-[0_0_0_3px_rgba(0,102,255,0.1),0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q023 — Now Serving" aria-current="true">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-900">Q023</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-[#EFF5FF] text-[#0052CC] border border-blue-200">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-[#0066FF] pulse-dot"
+                                aria-hidden="true"></span>
+                            Now Serving
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-0.5">Juan</p>
+                    <p class="text-xs text-gray-400">General Medicine</p>
+                </article>
 
-            <!-- Waiting — Q026 -->
-            <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                aria-label="Queue Q026 — Waiting">
-                <div class="flex items-start justify-between mb-1">
-                    <span class="font-mono text-[20px] font-semibold text-gray-900">Q026</span>
-                    <span
-                        class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
-                        Waiting
-                    </span>
-                </div>
-                <p class="text-sm text-gray-600 mb-0.5">Rosa</p>
-                <p class="text-xs text-gray-400">Orthopedics</p>
-            </article>
+                <!-- Waiting — Q024 -->
+                <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q024 — Waiting">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-900">Q024</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
+                            Waiting
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-0.5">Ana</p>
+                    <p class="text-xs text-gray-400">Cardiology</p>
+                </article>
 
-            <!-- Add more cards here as needed -->
+                <!-- Waiting — Q025 -->
+                <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q025 — Waiting">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-900">Q025</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
+                            Waiting
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-0.5">Jose</p>
+                    <p class="text-xs text-gray-400">General Medicine</p>
+                </article>
 
-        </div>
-        
-    </div><!-- end wrapper -->
-    
-</main>
+                <!-- Waiting — Q026 -->
+                <article class="bg-white rounded-[10px] border border-gray-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                    aria-label="Queue Q026 — Waiting">
+                    <div class="flex items-start justify-between mb-1">
+                        <span class="font-mono text-[20px] font-semibold text-gray-900">Q026</span>
+                        <span
+                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-[5px] bg-gray-50 text-gray-500 border border-gray-200">
+                            Waiting
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-0.5">Rosa</p>
+                    <p class="text-xs text-gray-400">Orthopedics</p>
+                </article>
+
+                <!-- Add more cards here as needed -->
+
+            </div>
+
+        </div><!-- end wrapper -->
+
+    </main>
 
 
     <!-- =========================================================
        FOOTER
        ========================================================= -->
-    <footer class="bg-white border-t border-gray-200 py-3 px-6" id="site-footer">
+    <footer class="bg-white border-t border-gray-200 py-3 px-6" id="site-footer" hidden>
         <div
             class="max-w-[1280px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-gray-600">
             <span>Total Today &nbsp;·&nbsp; <strong>45</strong></span>
