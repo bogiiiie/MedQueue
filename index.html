@@ -266,15 +266,46 @@
               class="text-xs font-medium px-2 py-0.5 rounded-md bg-gray-50 text-gray-500 border border-gray-200">Waiting</span>
           </article>
 
-          <article class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm" id="avg-wait-card"
-            aria-label="Average wait time: 28 minutes">
-            <p class="text-xs uppercase tracking-widest text-gray-500 mb-2">Avg Wait</p>
-            <p class="font-mono text-4xl font-semibold text-[rgb(234,108,0)] leading-none mb-2">28 min</p>
-            <p class="text-xs text-gray-400">
-              <time datetime="PT2M">Updated 2m ago</time>
-            </p>
-          </article>
 
+          <article class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm relative" id="avg-wait-card"
+            aria-label="Average wait time">
+            <p class="text-xs uppercase tracking-widest text-gray-500 mb-2">Avg Wait</p>
+            <p class="font-mono text-4xl font-semibold text-[rgb(234,108,0)] leading-none mb-2" id="avg-wait-value">—
+              min</p>
+            <div class="relative inline-block" id="avg-wait-dropdown-wrapper">
+              <button
+                class="flex items-center gap-1 text-xs text-gray-500 font-medium hover:text-gray-800 transition-colors cursor-pointer"
+                id="avg-wait-dept-btn" type="button" aria-haspopup="true" aria-expanded="false">
+                <span id="avg-wait-dept-label">All Departments</span>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                  stroke="currentColor" class="size-3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </button>
+              <div
+                class="absolute top-full left-0 mt-1 flex flex-col bg-white rounded-md border border-gray-200 shadow-sm py-1 w-52 z-50"
+                id="avg-wait-dept-menu" hidden>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="all">All Departments</button>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="General Medicine">General Medicine</button>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="Pediatrics">Pediatrics</button>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="Cardiology">Cardiology</button>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="Orthopedics">Orthopedics</button>
+                <button
+                  class="w-full text-left px-3 py-1.5 text-sm text-gray-700 font-medium hover:bg-gray-100 transition-colors cursor-pointer"
+                  type="button" data-dept="Emergency">Emergency</button>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -481,7 +512,7 @@
 
             <!-- Submit -->
             <button
-              class="w-full h-9 flex items-center justify-center gap-2 bg-[#0066FF] hover:bg-[#0052CC] text-white text-sm font-semibold rounded-[7px] transition-colors mt-1"
+              class="w-full h-9 flex items-center justify-center gap-2 bg-[#0066FF] hover:bg-[#0052CC] text-white text-sm font-semibold rounded-[7px] transition-colors mt-1 cursor-pointer"
               id="get-queue-btn" type="submit">
               Get Queue Number
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -553,28 +584,28 @@
         role="presentation">Pages</p>
 
       <button id="nav-queue-generator-btn"
-        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-[#0066FF] bg-[#EFF5FF] transition-colors"
+        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-[#0066FF] bg-[#EFF5FF] transition-colors cursor-pointer"
         type="button" role="menuitem" aria-current="page">
         Queue Generator
         <span class="w-1.5 h-1.5 rounded-full bg-[#0066FF]" aria-hidden="true"></span>
       </button>
       <button id="nav-live-display-btn"
-        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors"
+        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
         type="button" role="menuitem">Live Display</button>
       <button id="nav-queue-status-btn"
-        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors"
+        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
         type="button" role="menuitem">Queue Status</button>
       <button id="nav-staff-login-btn"
-        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors"
+        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
         type="button" role="menuitem">Staff Login</button>
       <button id="nav-counter-dashboard-btn"
-        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors"
+        class="w-full text-left px-3 py-2 text-sm flex items-center justify-between text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
         type="button" role="menuitem">Counter Dashboard</button>
 
     </div>
 
     <button
-      class="flex items-center gap-2 h-9 px-3 bg-white border border-gray-200 rounded-[9px] shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+      class="flex items-center gap-2 h-9 px-3 bg-white border border-gray-200 rounded-[9px] shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-sm text-gray-700 font-medium hover:bg-gray-50 transition-colors cursor-pointer"
       id="page-switcher-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
       aria-controls="page-switcher-menu" aria-label="Switch page — currently on Queue Generator">
       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0066FF"

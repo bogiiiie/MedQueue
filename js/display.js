@@ -59,17 +59,10 @@ async function updateNowServingByDepartment(department) {
 
     const allQueues = result.queues || [];
 
-    const today = new Date().toDateString();
-
-    // Filter to today's queues only
-    const todayQueues = allQueues.filter(q =>
-      new Date(q.created_at).toDateString() === today
-    );
-
-    // Pick the right subset based on selected tab
+    // Pick the right subset based on selected tab — all time, no date filter
     const scopedQueues = department === 'All'
-      ? todayQueues
-      : todayQueues.filter(q => q.department === department);
+      ? allQueues
+      : allQueues.filter(q => q.department === department);
 
     // Sort by created_at so oldest is first
     const sorted = [...scopedQueues].sort((a, b) =>
@@ -119,6 +112,7 @@ async function updateNowServingByDepartment(department) {
 
     // Re-render cards filtered to this department
     renderCards(scopedQueues);
+    updateFooterStats(allQueues);
     hideLoader();
 
   } catch (err) {
@@ -201,19 +195,23 @@ async function refreshQueueData() {
 
     const queues = result.queues || [];
 
-    // Find now serving and next up
-    const nowServing = queues.find(q => q.status === 'Serving');
-    const waitingQueues = queues.filter(q => q.status === 'Waiting');
+    // Get active tab
+    const activeTab = document.querySelector('[role="tab"][aria-selected="true"]');
+    const activeDept = activeTab ? activeTab.textContent.trim() : 'All';
+
+    // Scope to active department
+    const scopedQueues = activeDept === 'All'
+      ? queues
+      : queues.filter(q => q.department === activeDept);
+
+    const nowServing = scopedQueues.find(q => q.status === 'Serving');
+    const waitingQueues = scopedQueues.filter(q => q.status === 'Waiting');
     const nextUp = waitingQueues.length > 0 ? waitingQueues[0] : null;
 
-    // Update hero sections
     updateNowServing(nowServing ? nowServing.queue_number : '—');
     updateNextUp(nextUp ? nextUp.queue_number : '—');
 
-    // Render cards
-    renderCards(queues);
-
-    // Update now serving details with department and counter
+    // Update now serving details
     if (nowServing) {
       const detailsEl = document.querySelector('#now-serving-hero p.text-gray-500');
       if (detailsEl) {
@@ -223,8 +221,11 @@ async function refreshQueueData() {
       }
     }
 
-    // Always check and stamp CLOSED if needed after writing the dept line
     await stampClosedIfNeeded();
+
+    // Render cards scoped to active dept
+    renderCards(scopedQueues);
+    updateFooterStats(queues);
 
     // Update footer timestamp
     const updatedEl = document.querySelector('#site-footer time');
@@ -234,9 +235,6 @@ async function refreshQueueData() {
       updatedEl.textContent = `Updated ${timeStr}`;
       updatedEl.setAttribute('datetime', now.toISOString());
     }
-
-    // Update total and avg wait in footer
-    updateFooterStats(queues);
 
     hideLoader();
     resetCountdown();
@@ -248,8 +246,16 @@ async function refreshQueueData() {
 }
 
 function updateFooterStats(queues) {
-  const totalToday = queues.length;
-  const waitingQueues = queues.filter(q => q.status === 'Waiting');
+  const activeTab = document.querySelector('[role="tab"][aria-selected="true"]');
+  const activeDept = activeTab ? activeTab.textContent.trim() : 'All';
+
+  const scopedQueues = activeDept === 'All'
+    ? queues
+    : queues.filter(q => q.department === activeDept);
+
+  const waitingQueues = scopedQueues.filter(q => q.status === 'Waiting');
+
+  const totalToday = scopedQueues.length;
   const avgWaitMinutes = waitingQueues.length * 8;
 
   const totalSpan = document.querySelector('#site-footer span:first-child strong');
@@ -282,8 +288,6 @@ function renderCards(queues) {
     return;
   }
 
-  const displayQueues = queues.slice(-20);
-
   // Always update the est. wait regardless of whether someone is serving
   const waitingQueues = queues.filter(q => q.status === 'Waiting');
   const estWaitEl = document.querySelector('#next-up-bar span.text-sm.text-\\[rgb\\(234\\,108\\,0\\)\\]');
@@ -293,7 +297,7 @@ function renderCards(queues) {
       : 'No waiting patients';
   }
 
-  grid.innerHTML = displayQueues.map((q) => {
+  grid.innerHTML = queues.map((q) => {
     const isServing = q.status === 'Serving';
     const isCompleted = q.status === 'Completed';
     const isSkipped = q.status === 'Skipped';
@@ -399,4 +403,4 @@ socket.on('queue:pause', () => {
 
 // ── Initial load ──
 refreshQueueData();
-startCountdown();
+startCountdown(); f

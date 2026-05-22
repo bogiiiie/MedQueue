@@ -161,11 +161,19 @@ function updateStats(queues) {
   const total = queues.length;
   const served = queues.filter(q => q.status === 'Completed').length;
   const noShows = queues.filter(q => q.status === 'Skipped').length;
+  const waiting = queues.filter(q => q.status === 'Waiting' && q.department === myStaffDepartment).length;
+  const avgTimeText = waiting === 0 ? '0m' : `${waiting * 8}m`;
 
-  const statDds = document.querySelectorAll('#today-stats-panel dd');
-  if (statDds[0]) statDds[0].textContent = total;
-  if (statDds[1]) statDds[1].textContent = served;
-  if (statDds[2]) statDds[2].textContent = noShows;
+  document.querySelectorAll('#today-stats-panel dl > div').forEach(div => {
+    const dt = div.querySelector('dt');
+    const dd = div.querySelector('dd');
+    if (!dt || !dd) return;
+    const label = dt.textContent.trim().toUpperCase();
+    if (label === 'TOTAL')    dd.textContent = total;
+    if (label === 'SERVED')   dd.textContent = served;
+    if (label === 'NO-SHOWS') dd.textContent = noShows;
+    if (label === 'AVG TIME') dd.textContent = avgTimeText;
+  });
 }
 
 // ============================================================

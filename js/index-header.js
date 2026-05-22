@@ -79,6 +79,46 @@ document.querySelectorAll('[data-department]').forEach(btn => {
   });
 });
 
+// ── Avg Wait card ── (store queues globally for filter)
+let _allQueues = [];
+
+let _avgWaitDept = 'all';
+
+function updateAvgWait() {
+  const waiting = _allQueues.filter(q =>
+    q.status === 'Waiting' && (_avgWaitDept === 'all' || q.department === _avgWaitDept)
+  );
+  const avgWaitEl = document.getElementById('avg-wait-value');
+  if (avgWaitEl) avgWaitEl.textContent = `${waiting.length * 8} min`;
+}
+
+// ── Avg wait dept dropdown ──
+const avgWaitBtn = document.getElementById('avg-wait-dept-btn');
+const avgWaitMenu = document.getElementById('avg-wait-dept-menu');
+
+avgWaitBtn?.addEventListener('click', () => {
+  const isOpen = !avgWaitMenu.hidden;
+  avgWaitMenu.hidden = isOpen;
+  avgWaitBtn.setAttribute('aria-expanded', String(!isOpen));
+});
+
+avgWaitMenu?.querySelectorAll('button[data-dept]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    _avgWaitDept = btn.getAttribute('data-dept');
+    document.getElementById('avg-wait-dept-label').textContent = btn.textContent.trim();
+    avgWaitMenu.hidden = true;
+    avgWaitBtn.setAttribute('aria-expanded', 'false');
+    updateAvgWait();
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (avgWaitBtn && !avgWaitBtn.contains(e.target) && avgWaitMenu && !avgWaitMenu.contains(e.target)) {
+    avgWaitMenu.hidden = true;
+    avgWaitBtn?.setAttribute('aria-expanded', 'false');
+  }
+});
+
 // ── Live Queue Stats + Table ──
 async function loadIndexQueue() {
   try {
@@ -86,7 +126,9 @@ async function loadIndexQueue() {
     const result = await res.json();
     if (!result.success) return;
 
+    _allQueues = result.queues;
     const queues = result.queues;
+
     const serving = queues
       .filter(q => q.status === 'Serving')
       .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
@@ -104,8 +146,7 @@ async function loadIndexQueue() {
     if (nextUpEl) nextUpEl.textContent = waiting.length > 0 ? waiting[0].queue_number : '—';
 
     // ── Avg Wait card ──
-    const avgWaitEl = document.querySelector('#avg-wait-card p.font-mono');
-    if (avgWaitEl) avgWaitEl.textContent = `${waiting.length * 8} min`;
+    updateAvgWait();
 
     // ── Last updated ──
     const lastUpdatedEl = document.getElementById('queue-last-updated');
@@ -156,13 +197,15 @@ async function loadIndexQueue() {
 
   } catch (err) {
     console.error('Failed to load index queue:', err);
-    // Still show content even on error so page isn't stuck
     document.getElementById('page-loader').hidden = true;
     document.getElementById('queue-stats').hidden = false;
     document.getElementById('queue-status').hidden = false;
     document.getElementById('queue-form-panel').hidden = false;
   }
 }
+
+// ── Dept filter change ──
+document.getElementById('avg-wait-dept-filter')?.addEventListener('change', updateAvgWait);
 
 // ── Refresh button ──
 const queueRefreshBtn = document.getElementById('queue-refresh-btn');

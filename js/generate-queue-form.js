@@ -222,6 +222,7 @@ function showResultCard(data, email = '') {
     <button
       id="download-pdf-btn"
       type="button"
+      class="cursor-pointer"
       style="width:100%; height:36px; display:flex; align-items:center; justify-content:center; gap:6px;
         border:1px solid #E5E7EB; border-radius:7px; font-size:13px; font-weight:500;
         color:#374151; background:white; cursor:pointer; font-family:inherit; margin-bottom:.5rem;"
@@ -238,6 +239,7 @@ function showResultCard(data, email = '') {
     <button
       id="new-queue-btn"
       type="button"
+      class="cursor-pointer"
       style="width:100%; height:36px; display:flex; align-items:center; justify-content:center;
         border:none; background:none; font-size:13px; color:#6B7280; cursor:pointer; font-family:inherit;"
     >
