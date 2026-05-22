@@ -4,6 +4,9 @@
 const params = new URLSearchParams(window.location.search);
 let currentData = {};
 let currentQRCanvas = null;
+let almostNotified = false;
+let almostPollInterval = null;
+
 const queueNum = params.get('queue');
 
 // ── On page load ──
@@ -13,6 +16,9 @@ if (queueNum) {
   showError('No queue number found. Please scan your QR code again.');
 }
 
+// ============================================================
+// LOAD QUEUE STATUS
+// ============================================================
 async function loadQueueStatus(queue) {
   try {
     const res = await fetch(`/api/queue/status?queue=${encodeURIComponent(queue)}`);
@@ -29,6 +35,9 @@ async function loadQueueStatus(queue) {
     document.getElementById('page-loader').hidden = true;
     document.getElementById('main-content').hidden = false;
 
+    startAlmostTurnPolling();
+
+    
   } catch (err) {
     console.error('Failed to load queue status:', err);
     document.getElementById('page-loader').hidden = true;
@@ -36,15 +45,18 @@ async function loadQueueStatus(queue) {
   }
 }
 
+// ============================================================
+// RENDER STATUS
+// ============================================================
 function renderStatus(data) {
-  const isServing   = data.status === 'Serving';
+  const isServing = data.status === 'Serving';
   const isCompleted = data.status === 'Completed';
 
   // ── Your queue number card ──
   const queueHeading = document.getElementById('your-queue-heading');
   if (queueHeading) queueHeading.textContent = data.queue_number;
 
-  // Status badge (sibling of the heading)
+  // Status badge
   const statusBadgeEl = queueHeading?.nextElementSibling;
   if (statusBadgeEl) {
     statusBadgeEl.textContent = isServing ? 'Now Serving' : isCompleted ? 'Completed' : 'Waiting';
@@ -64,10 +76,9 @@ function renderStatus(data) {
   // Department and counter
   const dds = document.querySelectorAll('#your-queue-card dd');
   if (dds[0]) dds[0].textContent = data.department || '—';
-  if (dds[1]) dds[1].textContent = data.counter    || '—';
+  if (dds[1]) dds[1].textContent = data.counter || '—';
 
   // ── Position & Wait card ──
-  // position = rank among WAITING patients in the same department (comes from server)
   const position = data.position ?? 0;
 
   const positionEl = document.getElementById('position-value');
@@ -88,7 +99,7 @@ function renderStatus(data) {
         : (data.estimated_wait || '—');
   }
 
-  // Progress bar — 100% when serving/completed, shrinks by 15% per position
+  // Progress bar
   const progressBar = document.querySelector('[role="progressbar"] div');
   const progressPct = isServing || isCompleted
     ? 100
@@ -102,10 +113,12 @@ function renderStatus(data) {
   // ── Queue Around You ──
   renderNearbyList(data.nearby, data.queue_number);
 
-  // ── SMS notice ──
-  const smsNumberEl = document.getElementById('sms-masked-number');
-  if (smsNumberEl && data.mobile) {
-    smsNumberEl.textContent = data.mobile.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 *** $3');
+  // ── Email notice ──
+  const emailAddressEl = document.getElementById('email-masked-address');
+  if (emailAddressEl && data.email) {
+    const [user, domain] = data.email.split('@');
+    const masked = user.slice(0, 2) + '***@' + domain;
+    emailAddressEl.textContent = masked;
   }
 
   // ── QR Code ──
@@ -138,15 +151,17 @@ function renderStatus(data) {
   }
 }
 
-// ── Nearby queue list ──
+// ============================================================
+// NEARBY QUEUE LIST
+// ============================================================
 function renderNearbyList(nearby, myQueue) {
   const list = document.querySelector('#queue-around-card ol');
   if (!list || !nearby) return;
 
   list.innerHTML = nearby.map((item) => {
-    const isYou       = item.queue_number === myQueue;
+    const isYou = item.queue_number === myQueue;
     const isCompleted = item.status === 'Completed';
-    const isServing   = item.status === 'Serving';
+    const isServing = item.status === 'Serving';
 
     let badge = '';
     if (isCompleted) {
@@ -175,26 +190,103 @@ function renderNearbyList(nearby, myQueue) {
   }).join('');
 }
 
-// ── Download Queue Card (PDF) ──
+// ============================================================
+// ALMOST YOUR TURN — poll every 30s, notify once
+// ============================================================
+async function checkAlmostTurn() {
+  const now = new Date().toLocaleTimeString('en-PH', { hour12: false });
+
+  if (almostNotified) {
+    console.log(`[EmailChecker] ${now} — already notified, skipping.`);
+    return;
+  }
+  if (!currentData.queue_number) {
+    console.log(`[EmailChecker] ${now} — no queue number, skipping.`);
+    return;
+  }
+  if (currentData.status !== 'Waiting') {
+    console.log(`[EmailChecker] ${now} — status is "${currentData.status}", skipping.`);
+    return;
+  }
+
+  console.log(`[EmailChecker] ${now} — checking position for ${currentData.queue_number}...`);
+
+  try {
+    const res = await fetch(`/api/queue/status?queue=${encodeURIComponent(currentData.queue_number)}`);
+    if (!res.ok) {
+      console.warn(`[EmailChecker] ${now} — API returned ${res.status}, skipping.`);
+      return;
+    }
+
+    const data = await res.json();
+    currentData = { ...currentData, ...data };
+    renderStatus(currentData);
+
+    const position = data.position ?? 0;
+    console.log(`[EmailChecker] ${now} — position: ${position}, email sent: ${almostNotified}`);
+
+    if (position > 0 && position <= 2) {
+      almostNotified = true;
+
+      socket.emit('notify:almost', {
+        email:          currentData.email,
+        patient_name:   currentData.patient_name,
+        queue_number:   currentData.queue_number,
+        department:     currentData.department,
+        counter:        currentData.counter,
+        patients_ahead: position - 1,
+      });
+
+      console.log(`[EmailChecker] ${now} — it's almost your turn! Email dispatched to ${currentData.email} (position: ${position}, patients ahead: ${position - 1}).`);
+
+      stopAlmostTurnPolling();
+      console.log(`[EmailChecker] ${now} — polling stopped.`);
+    } else {
+      console.log(`[EmailChecker] ${now} — not close enough yet (position: ${position}), will check again in 30s.`);
+    }
+
+  } catch (err) {
+    console.error(`[EmailChecker] ${now} — fetch failed:`, err);
+  }
+}
+
+function startAlmostTurnPolling() {
+  // Don't start if already serving/completed
+  if (currentData.status === 'Serving' || currentData.status === 'Completed') return;
+
+  checkAlmostTurn(); // run once immediately
+  almostPollInterval = setInterval(checkAlmostTurn, 5_000);
+}
+
+function stopAlmostTurnPolling() {
+  if (almostPollInterval) {
+    clearInterval(almostPollInterval);
+    almostPollInterval = null;
+  }
+}
+
+// ============================================================
+// DOWNLOAD QUEUE CARD (PDF)
+// ============================================================
 function downloadQueueCard() {
   if (typeof window.jspdf === 'undefined') {
     alert('PDF download is not available yet.');
     return;
   }
 
-  const queueNumber  = currentData.queue_number || '—';
-  const patientName  = currentData.patient_name  || 'Patient';
-  const department   = currentData.department    || '—';
-  const counter      = currentData.counter       || '—';
-  const position     = currentData.position      || 0;
+  const queueNumber = currentData.queue_number || '—';
+  const patientName = currentData.patient_name || 'Patient';
+  const department = currentData.department || '—';
+  const counter = currentData.counter || '—';
+  const position = currentData.position || 0;
   const estimatedWait = currentData.estimated_wait || '—';
-  const mobile       = currentData.mobile        || '—';
-
-  const maskedMobile = mobile.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 *** $3');
+  const email = currentData.email || '—';
+  const [u, d] = email.includes('@') ? email.split('@') : ['—', ''];
+  const maskedEmail = email !== '—' ? u.slice(0, 2) + '***@' + d : '—';
 
   const now = new Date();
   const generatedDate = now.toLocaleDateString('en-PH');
-  const generatedAt   = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+  const generatedAt = now.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
 
   const { jsPDF } = window.jspdf;
   const W = 105, H = 175;
@@ -223,14 +315,14 @@ function downloadQueueCard() {
 
   // Info rows
   const rows = [
-    ['Name',       patientName],
-    ['Mobile',     maskedMobile],
+    ['Name', patientName],
+    ['Email', maskedEmail],
     ['Department', department],
-    ['Counter',    counter],
-    ['Position',   position > 0 ? `${position}${ordinal(position)} in line` : '—'],
-    ['Est. Wait',  estimatedWait],
-    ['Date',       generatedDate],
-    ['Time',       generatedAt],
+    ['Counter', counter],
+    ['Position', position > 0 ? `${position}${ordinal(position)} in line` : '—'],
+    ['Est. Wait', estimatedWait],
+    ['Date', generatedDate],
+    ['Time', generatedAt],
   ];
 
   doc.setFontSize(9);
@@ -261,13 +353,15 @@ function downloadQueueCard() {
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(150);
-  doc.text('Please stay nearby the waiting area and keep your phone on.', W / 2, y + 9,  { align: 'center' });
-  doc.text('You will be notified before your turn.',                        W / 2, y + 14, { align: 'center' });
+  doc.text('Please stay nearby the waiting area and keep your phone on.', W / 2, y + 9, { align: 'center' });
+  doc.text('You will be notified by email when it\'s your turn.', W / 2, y + 14, { align: 'center' });
 
   doc.save(`QueueCard-${queueNumber}.pdf`);
 }
 
-// ── Ordinal suffix ──
+// ============================================================
+// ORDINAL SUFFIX
+// ============================================================
 function ordinal(n) {
   if (!n || n === 0) return '';
   const s = ['th', 'st', 'nd', 'rd'];
@@ -275,7 +369,9 @@ function ordinal(n) {
   return s[(v - 20) % 10] || s[v] || s[0];
 }
 
-// ── Socket.io — live updates ──
+// ============================================================
+// SOCKET.IO — live updates
+// ============================================================
 const socket = io();
 
 socket.on('queue:update', (data) => {
@@ -284,21 +380,30 @@ socket.on('queue:update', (data) => {
   const updated = data.queues.find(q => q.queue_number === currentData.queue_number);
   if (!updated) return;
 
-  // Merge live fields — position is dept-scoped and comes from server inside the queues array
-  updated.now_serving    = data.now_serving    ?? updated.now_serving;
+  updated.now_serving = data.now_serving ?? updated.now_serving;
   updated.estimated_wait = data.estimated_wait ?? updated.estimated_wait;
 
   currentData = { ...currentData, ...updated };
   renderStatus(currentData);
+
+  // Stop polling if no longer waiting
+  if (currentData.status === 'Serving' || currentData.status === 'Completed') {
+    almostNotified = true;
+    stopAlmostTurnPolling();
+  }
 });
 
 socket.on('queue:done', (data) => {
   if (data.queue_number !== currentData.queue_number) return;
   currentData = { ...currentData, status: 'Completed', position: 0 };
   renderStatus(currentData);
+  almostNotified = true;
+  stopAlmostTurnPolling();
 });
 
-// ── Error screen ──
+// ============================================================
+// ERROR SCREEN
+// ============================================================
 function showError(message) {
   document.getElementById('page-loader').hidden = true;
   const main = document.getElementById('main-content');

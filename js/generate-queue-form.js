@@ -1,9 +1,15 @@
 // ── EmailJS ──
-const EMAILJS_PUBLIC_KEY = 'VGT84EnFa0OcMMxcs';
+const EMAILJS_PUBLIC_KEY = 'VGT84EnFa0cMMxcs';
 const EMAILJS_SERVICE_ID = 'service_pssc8fl';
-const EMAILJS_CONFIRM_TMPL = 'template_u0ytxfe';
 
 emailjs.init(EMAILJS_PUBLIC_KEY);
+
+// ── Socket.io connection (declared once at the top) ──
+const socket = io();
+
+socket.on('connect', () => {
+  console.log('[GenerateForm] Socket connected for email notifications:', socket.id);
+});
 
 // ── Form ──
 const generateQueueForm = document.getElementById('generate-queue-form');
@@ -94,16 +100,46 @@ generateQueueForm.addEventListener('submit', async (e) => {
     sessionStorage.setItem('lastDepartment', data.department);
     sessionStorage.setItem('lastFullname', data.fullname);
 
-    // ── Send confirmation email ──
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_CONFIRM_TMPL, {
-      email: email,
-      patient_name: data.fullname,
-      queue_number: data.queueNumber,
-      department: data.department,
-      counter: data.counter,
-      position: data.position,
-      estimated_wait: data.estimatedWait,
-    }).catch(err => console.error('Confirmation email failed:', err));
+    // ── Send "Almost Your Turn" email if position is 1 (first in line) ──
+    if (data.position === 1) {
+      console.log(`[AlmostTurn] Position is 1, sending almost turn email to ${email}`);
+      console.log(`[AlmostTurn] Data:`, {
+        email: email,
+        patient_name: data.fullname,
+        queue_number: data.queueNumber,
+        department: data.department,
+        counter: data.counter,
+        patients_ahead: 0,
+      });
+      
+      // Use the existing socket connection
+      if (socket.connected) {
+        console.log(`[AlmostTurn] Socket already connected, emitting now`);
+        socket.emit('notify:almost', {
+          email: email,
+          patient_name: data.fullname,
+          queue_number: data.queueNumber,
+          department: data.department,
+          counter: data.counter,
+          patients_ahead: 0,
+        });
+        console.log(`[AlmostTurn] Event emitted`);
+      } else {
+        console.log(`[AlmostTurn] Socket not connected yet, waiting...`);
+        socket.once('connect', () => {
+          console.log(`[AlmostTurn] Socket connected, emitting now`);
+          socket.emit('notify:almost', {
+            email: email,
+            patient_name: data.fullname,
+            queue_number: data.queueNumber,
+            department: data.department,
+            counter: data.counter,
+            patients_ahead: 0,
+          });
+          console.log(`[AlmostTurn] Event emitted`);
+        });
+      }
+    }
 
     showResultCard(data, email);
 
@@ -211,16 +247,16 @@ function showResultCard(data, email = '') {
     <hr style="border:none; height:1px; background:#E5E7EB; margin:1rem 0;" aria-hidden="true">
 
     <div style="text-align:center; margin-top:0.5rem;">
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-    stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" 
-    style="display:inline-block; margin-bottom:4px;">
-    <rect width="20" height="16" x="2" y="4" rx="2"/>
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
-  </svg>
-  <p style="font-size:12px; color:#6B7280; margin:0;">
-    Email notification will be sent to <strong style="color:#374151;">${escapeHtml(email)}</strong>
-  </p>
-</div>
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" 
+        style="display:inline-block; margin-bottom:4px;">
+        <rect width="20" height="16" x="2" y="4" rx="2"/>
+        <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+      </svg>
+      <p style="font-size:12px; color:#6B7280; margin:0;">
+        Email notification will be sent to <strong style="color:#374151;">${escapeHtml(email)}</strong>
+      </p>
+    </div>
   `;
 
   generateQR(data.queueNumber);

@@ -11,15 +11,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="src/output.css">
   <style>
-    .font-sans  { font-family: "Geist", sans-serif; }
-    .font-mono  { font-family: "Geist Mono", monospace; }
+    .font-sans {
+      font-family: "Geist", sans-serif;
+    }
+
+    .font-mono {
+      font-family: "Geist Mono", monospace;
+    }
 
     .queue-number {
       font-size: clamp(52px, 14vw, 72px);
       line-height: 1;
     }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     #page-loader {
       min-height: 60vh;
@@ -42,8 +51,8 @@
 <body class="relative min-h-screen bg-[#F7F8FA] font-sans">
 
   <!-- ── Header ── -->
-  <header class="sticky top-0 z-20 bg-white border-b border-gray-200 h-[52px] flex items-center px-6"
-    id="site-header" role="banner">
+  <header class="sticky top-0 z-20 bg-white border-b border-gray-200 h-[52px] flex items-center px-6" id="site-header"
+    role="banner">
     <div class="max-w-7xl w-full mx-auto flex justify-between items-center">
       <span class="text-[14px] font-semibold text-gray-900">MedQueue</span>
       <div class="flex items-center gap-1.5" role="status" aria-label="Live feed active">
@@ -70,9 +79,8 @@
       <p class="font-mono text-[11px] uppercase tracking-widest text-gray-400 mb-2">Your Queue Number</p>
 
       <div class="flex items-end gap-3 mb-2">
-        <span class="font-mono font-bold text-teal-600 queue-number"
-          id="your-queue-heading"
-          aria-live="polite" aria-atomic="true">—</span>
+        <span class="font-mono font-bold text-teal-600 queue-number" id="your-queue-heading" aria-live="polite"
+          aria-atomic="true">—</span>
         <!-- status badge — updated by renderStatus -->
         <span class="mb-1.5 text-xs font-medium px-2 py-0.5 rounded-[5px] bg-gray-100 text-gray-500">
           Waiting
@@ -95,8 +103,7 @@
 
 
     <!-- ── Position & Wait Card ── -->
-    <section
-      class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+    <section class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
       id="position-card" aria-labelledby="position-heading">
 
       <h2 class="sr-only" id="position-heading">Your Queue Position</h2>
@@ -106,26 +113,23 @@
         <!-- Position — rank among waiting patients in same dept -->
         <div>
           <p class="text-[12px] uppercase tracking-wide text-gray-500 mb-1">Position</p>
-          <p class="font-mono text-[36px] font-bold text-[#0066FF] leading-none"
-            id="position-value"
-            aria-live="polite" aria-atomic="true">—</p>
+          <p class="font-mono text-[36px] font-bold text-[#0066FF] leading-none" id="position-value" aria-live="polite"
+            aria-atomic="true">—</p>
           <p class="text-[11px] text-gray-400 mt-1">in your dept.</p>
         </div>
 
         <!-- Est. Wait — position × avg service time -->
         <div>
           <p class="text-[12px] uppercase tracking-wide text-gray-500 mb-1">Est. Wait</p>
-          <p class="font-mono text-[36px] font-bold text-[rgb(234,108,0)] leading-none"
-            id="wait-value"
+          <p class="font-mono text-[36px] font-bold text-[rgb(234,108,0)] leading-none" id="wait-value"
             aria-live="polite" aria-atomic="true">—</p>
         </div>
 
       </div>
 
       <!-- Progress bar -->
-      <div class="h-1 bg-gray-200 rounded-full overflow-hidden"
-        role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
-        aria-label="Queue progress">
+      <div class="h-1 bg-gray-200 rounded-full overflow-hidden" role="progressbar" aria-valuenow="0" aria-valuemin="0"
+        aria-valuemax="100" aria-label="Queue progress">
         <div class="h-full bg-[#0066FF] rounded-full transition-all duration-700" style="width: 5%;"></div>
       </div>
 
@@ -133,8 +137,7 @@
 
 
     <!-- ── Queue Around You Card ── -->
-    <section
-      class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+    <section class="bg-white rounded-[10px] border border-gray-200 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
       id="queue-around-card" aria-labelledby="queue-around-heading">
 
       <h3 class="text-[13px] font-semibold text-gray-900 mb-3" id="queue-around-heading">Queue Around You</h3>
@@ -148,19 +151,18 @@
     </section>
 
 
-    <!-- ── SMS Alert Notice ── -->
-    <div class="bg-gray-50 rounded-[10px] border border-gray-200 p-4" id="sms-alert-notice" role="status">
+    <!-- ── Email Alert Notice ── -->
+    <div class="bg-gray-50 rounded-[10px] border border-gray-200 p-4" id="email-alert-notice" role="status">
       <div class="flex items-center gap-2 mb-1">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-          fill="none" stroke="#0D9488" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          <path d="M10.268 21a2 2 0 0 0 3.464 0"/>
-          <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0D9488"
+          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect width="20" height="16" x="2" y="4" rx="2" />
+          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
         </svg>
-        <span class="text-sm font-semibold text-teal-600">SMS Alerts Active</span>
+        <span class="text-sm font-semibold text-teal-600">Email Alerts Active</span>
       </div>
-      <p class="text-[13px] text-gray-500 mb-1">Notified 5–10 min before your turn.</p>
-      <span class="text-xs text-gray-400" id="sms-masked-number">—</span>
+      <p class="text-[13px] text-gray-500 mb-1">You'll be notified by email before and when it's your turn.</p>
+      <span class="text-xs text-gray-400" id="email-masked-address">—</span>
     </div>
 
 
@@ -177,16 +179,14 @@
 
       <p class="text-xs text-gray-400 mt-2 mb-3">Show this code at the counter</p>
 
-      <button
-        id="download-queue-card-btn"
+      <button id="download-queue-card-btn"
         class="w-full flex items-center justify-center gap-2 h-9 border border-gray-200 rounded-[7px] text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-50 active:bg-gray-50 transition-colors"
         type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-          fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-          aria-hidden="true">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" x2="12" y1="15" y2="3"/>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" x2="12" y1="15" y2="3" />
         </svg>
         Download Queue Card
       </button>
@@ -236,22 +236,18 @@
 
     <button
       class="flex items-center gap-2 h-9 px-3 bg-white border border-gray-200 rounded-[9px] shadow-[0_2px_8px_rgba(0,0,0,0.1)] text-sm text-gray-700 font-medium cursor-pointer hover:bg-gray-50 transition-colors"
-      id="page-switcher-trigger" type="button"
-      aria-haspopup="menu" aria-expanded="false"
-      aria-controls="page-switcher-menu"
-      aria-label="Switch page — currently on Queue Status">
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
-        fill="none" stroke="#0066FF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-        aria-hidden="true" focusable="false">
-        <path d="M15 3h6v6"/>
-        <path d="M10 14 21 3"/>
-        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      id="page-switcher-trigger" type="button" aria-haspopup="menu" aria-expanded="false"
+      aria-controls="page-switcher-menu" aria-label="Switch page — currently on Queue Status">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0066FF"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="M15 3h6v6" />
+        <path d="M10 14 21 3" />
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
       </svg>
       Queue Status
-      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
-        fill="none" stroke="#9CA3AF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
-        aria-hidden="true" focusable="false">
-        <path d="m6 9 6 6 6-6"/>
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF"
+        stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <path d="m6 9 6 6 6-6" />
       </svg>
     </button>
 
@@ -265,4 +261,5 @@
   <script src="/js/status.js"></script>
 
 </body>
+
 </html>

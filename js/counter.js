@@ -1,7 +1,8 @@
 // ── EmailJS ──
 const EMAILJS_PUBLIC_KEY = 'VGT84EnFa0OcMMxcs';
 const EMAILJS_SERVICE_ID = 'service_pssc8fl';
-const EMAILJS_TURN_TMPL = 'template_ebi2swf';
+const EMAILJS_ALMOST_TURN_TMPL = 'template_u0ytxfe';   // Almost your turn email
+const EMAILJS_TURN_TMPL = 'template_ebi2swf';          // Your turn email
 
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
@@ -115,7 +116,7 @@ function renderQueueTable(queues) {
       <td class="py-2.5 pr-4 ${isServing ? 'pl-2.5' : ''} font-mono text-sm ${isCompleted ? 'text-gray-400' : 'text-gray-900'}">${q.queue_number}</td>
       <td class="py-2.5 pr-4 text-sm ${isCompleted ? 'text-gray-400 line-through' : 'text-gray-700'}">${q.patient_name || '—'}</td>
       <td class="py-2.5">${badge}</td>
-    </tr>`;
+     </tr>`;
   }).join('');
 }
 
@@ -358,42 +359,36 @@ function updateCounterUI(status) {
   const openStatusLabel = document.querySelector('#counter-subbar .text-green-600');
   
   if (status === 'closed') {
-    // Change dot to gray
     if (openStatusDot) {
       openStatusDot.classList.remove('bg-green-500');
       openStatusDot.classList.add('bg-gray-400');
     }
-    // Change label text and color
     if (openStatusLabel) {
       openStatusLabel.textContent = 'CLOSED';
       openStatusLabel.classList.remove('text-green-600');
       openStatusLabel.classList.add('text-gray-500');
     }
-    // Change button text to "Open Counter"
     if (closeCounterBtn) {
       closeCounterBtn.textContent = 'Open Counter';
     }
     isCounterClosed = true;
   } else {
-    // Change dot to green
     if (openStatusDot) {
       openStatusDot.classList.remove('bg-gray-400');
       openStatusDot.classList.add('bg-green-500');
     }
-    // Change label text and color
     if (openStatusLabel) {
       openStatusLabel.textContent = 'OPEN';
       openStatusLabel.classList.remove('text-gray-500');
       openStatusLabel.classList.add('text-green-600');
     }
-    // Change button text to "Close Counter"
     if (closeCounterBtn) {
       closeCounterBtn.textContent = 'Close Counter';
     }
     isCounterClosed = false;
   }
   
-  console.log(`Counter status updated to: ${status}, button text: ${closeCounterBtn ? closeCounterBtn.textContent : 'not found'}`);
+  console.log(`Counter status updated to: ${status}`);
 }
 
 async function loadCounterStatus() {
@@ -806,7 +801,23 @@ socket.on('queue:update', () => loadDashboard());
 socket.on('queue:done', () => loadDashboard());
 socket.on('queue:skip', () => loadDashboard());
 
+// ── Send "almost your turn" email (using confirmation template) ──
+socket.on('send:email:almost', (data) => {
+  console.log('[COUNTER] send:email:almost received:', data); // ← add this
+  if (!data.email) return;
+  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_ALMOST_TURN_TMPL, {
+    email:          data.email,
+    patient_name:   data.patient_name,
+    queue_number:   data.queue_number,
+    department:     data.department,
+    counter:        data.counter,
+    patients_ahead: data.patients_ahead,
+  }).catch(err => console.error('Almost email failed:', err.text, err.status));
+});
+
+// ── Send "your turn" email ──
 socket.on('send:email:turn', (data) => {
+  console.log('Turn email data received:', data); // 👈 see what's coming in
   if (!data.email) return;
   emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TURN_TMPL, {
     email: data.email,
@@ -814,7 +825,7 @@ socket.on('send:email:turn', (data) => {
     queue_number: data.queue_number,
     department: data.department,
     counter: data.counter,
-  }).catch(err => console.error('Turn email failed:', err));
+  }).catch(err => console.error('Turn email failed - text:', err.text, 'status:', err.status));
 });
 
 // ============================================================
@@ -860,8 +871,11 @@ function updateNowServing(queueNumber, patientName, department = '—', counter 
     await loadCounterStatus();
     await loadDashboard();
   } finally {
-    document.getElementById('page-loader').hidden = true;
-    document.getElementById('left-col').hidden = false;
-    document.getElementById('right-col').hidden = false;
+    const loader = document.getElementById('page-loader');
+    if (loader) loader.hidden = true;
+    const leftCol = document.getElementById('left-col');
+    const rightCol = document.getElementById('right-col');
+    if (leftCol) leftCol.hidden = false;
+    if (rightCol) rightCol.hidden = false;
   }
 })();
