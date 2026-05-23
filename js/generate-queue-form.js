@@ -211,7 +211,7 @@ function showResultCard(data, email = '') {
 
     <div id="qr-output" style="display:flex; justify-content:center; margin-bottom:.75rem;">
       <div style="padding:8px; border:1px solid #E5E7EB; border-radius:7px; background:white;">
-        <div id="qr-div"></div>
+        <div id="qr-div" style="display:flex; justify-content:center; align-items:center; min-height:120px;"></div>
       </div>
     </div>
 
@@ -261,32 +261,120 @@ function showResultCard(data, email = '') {
     </div>
   `;
 
-  generateQR(data.queueNumber);
-  document.getElementById('download-pdf-btn').addEventListener('click', () => downloadPDF(data));
+  // Generate QR code and store reference for PDF
+  generateAndStoreQR(data.queueNumber, data);
+  
   document.getElementById('new-queue-btn').addEventListener('click', resetForm);
 }
 
-function generateQR(text) {
-  const div = document.getElementById('qr-div');
-  if (!div) return;
+// Store QR data URL globally for PDF access
+let currentQRDataURL = null;
+let currentQueueData = null;
 
-  if (typeof QRCode === 'undefined') {
-    div.innerHTML = '<p style="font-size:12px;color:#9CA3AF;">QR code unavailable</p>';
+function generateAndStoreQR(queueNumber, queueData) {
+  const div = document.getElementById('qr-div');
+  if (!div) {
+    console.error('QR div not found');
     return;
   }
 
-  new QRCode(div, {
-    text,
+  // Clear previous QR
+  div.innerHTML = '';
+  div.style.display = 'flex';
+  div.style.justifyContent = 'center';
+  div.style.alignItems = 'center';
+  
+  // Show loading indicator
+  const loadingDiv = document.createElement('div');
+  loadingDiv.style.width = '120px';
+  loadingDiv.style.height = '120px';
+  loadingDiv.style.display = 'flex';
+  loadingDiv.style.alignItems = 'center';
+  loadingDiv.style.justifyContent = 'center';
+  loadingDiv.style.fontSize = '12px';
+  loadingDiv.style.color = '#9CA3AF';
+  loadingDiv.textContent = 'Generating QR...';
+  div.appendChild(loadingDiv);
+
+  if (typeof QRCode === 'undefined') {
+    div.innerHTML = '<p style="font-size:12px;color:#9CA3AF;">QR code unavailable</p>';
+    currentQRDataURL = null;
+    return;
+  }
+
+  // Create a container for the QR code
+  const qrContainer = document.createElement('div');
+  qrContainer.id = 'qr-code-container';
+  div.innerHTML = '';
+  div.appendChild(qrContainer);
+
+  // Generate QR code
+  new QRCode(qrContainer, {
+    text: queueNumber,
     width: 120,
     height: 120,
     colorDark: '#0A0A0A',
     colorLight: '#FFFFFF',
+    correctLevel: QRCode.CorrectLevel.H
   });
+
+  // Wait for QR to be generated and capture as data URL
+  const captureQRAsDataURL = () => {
+    // Try to find img element (most common)
+    const qrImg = qrContainer.querySelector('img');
+    if (qrImg && qrImg.complete && qrImg.src) {
+      currentQRDataURL = qrImg.src;
+      currentQueueData = queueData;
+      console.log('QR captured as image data URL');
+      
+      // Attach download button event after QR is ready
+      const downloadBtn = document.getElementById('download-pdf-btn');
+      if (downloadBtn) {
+        // Remove existing listeners and add new one
+        const newDownloadBtn = downloadBtn.cloneNode(true);
+        downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+        newDownloadBtn.addEventListener('click', () => downloadPDF());
+      }
+      return;
+    }
+    
+    // Try to find canvas element (alternative)
+    const qrCanvas = qrContainer.querySelector('canvas');
+    if (qrCanvas) {
+      try {
+        currentQRDataURL = qrCanvas.toDataURL('image/png');
+        currentQueueData = queueData;
+        console.log('QR captured from canvas as data URL');
+        
+        // Attach download button event after QR is ready
+        const downloadBtn = document.getElementById('download-pdf-btn');
+        if (downloadBtn) {
+          const newDownloadBtn = downloadBtn.cloneNode(true);
+          downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+          newDownloadBtn.addEventListener('click', () => downloadPDF());
+        }
+        return;
+      } catch (e) {
+        console.warn('Failed to capture QR from canvas:', e);
+      }
+    }
+    
+    // If not ready, try again after a short delay
+    setTimeout(captureQRAsDataURL, 100);
+  };
+  
+  // Start capturing after a small delay to ensure QR renders
+  setTimeout(captureQRAsDataURL, 200);
 }
 
-function downloadPDF(data) {
+function downloadPDF() {
   if (typeof window.jspdf === 'undefined') {
     alert('PDF download is not available yet.');
+    return;
+  }
+
+  if (!currentQueueData) {
+    alert('Queue data not available. Please try again.');
     return;
   }
 
@@ -294,8 +382,10 @@ function downloadPDF(data) {
   const W = 105;
   const H = 175;
   const doc = new jsPDF({ unit: 'mm', format: [W, H] });
+  const data = currentQueueData;
   const maskedMobile = data.mobile.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 *** $3');
 
+  // Document header
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0);
@@ -339,44 +429,48 @@ function downloadPDF(data) {
     y += 7.5;
   });
 
-  const qrDiv = document.getElementById('qr-div');
-  const qrImg = qrDiv ? qrDiv.querySelector('img') : null;
-
-  const embedAndSave = () => {
-    if (qrImg && qrImg.src) {
-      try {
-        const qrSize = 32;
-        const qrX = (W - qrSize) / 2;
-        doc.addImage(qrImg.src, 'PNG', qrX, y + 6, qrSize, qrSize);
-        y += qrSize + 10;
-      } catch (e) {
-        console.warn('QR embed failed:', e);
-        y += 6;
-      }
-    } else {
+  // Add QR code using the stored data URL
+  if (currentQRDataURL) {
+    try {
+      const qrSize = 32;
+      const qrX = (W - qrSize) / 2;
+      doc.addImage(currentQRDataURL, 'PNG', qrX, y + 6, qrSize, qrSize);
+      y += qrSize + 10;
+      console.log('QR added to PDF successfully');
+    } catch (e) {
+      console.warn('QR embed failed:', e);
       y += 6;
+      // Add placeholder text
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text('QR Code', W / 2, y + 20, { align: 'center' });
     }
-
-    doc.setDrawColor(220);
-    doc.line(10, y + 2, W - 10, y + 2);
-
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(150);
-    doc.text('Please stay nearby the waiting area and keep your phone on.', W / 2, y + 9, { align: 'center' });
-    doc.text('Email notification will be sent before your turn.', W / 2, y + 14, { align: 'center' });
-
-    doc.save(`QueueCard-${data.queueNumber}.pdf`);
-  };
-
-  if (qrImg && !qrImg.complete) {
-    qrImg.onload = embedAndSave;
   } else {
-    embedAndSave();
+    console.warn('No QR data URL available');
+    y += 6;
+    // Add placeholder text
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text('QR Code', W / 2, y + 20, { align: 'center' });
   }
+
+  doc.setDrawColor(220);
+  doc.line(10, y + 2, W - 10, y + 2);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(150);
+  doc.text('Please stay nearby the waiting area and keep your phone on.', W / 2, y + 9, { align: 'center' });
+  doc.text('Email notification will be sent before your turn.', W / 2, y + 14, { align: 'center' });
+
+  // Save the PDF
+  doc.save(`QueueCard-${data.queueNumber}.pdf`);
 }
 
 function resetForm() {
+  // Reset global variables
+  currentQRDataURL = null;
+  currentQueueData = null;
   window.location.reload();
 }
 
