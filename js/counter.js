@@ -1,8 +1,8 @@
 // ── EmailJS ──
-const EMAILJS_PUBLIC_KEY = 'VGT84EnFa0OcMMxcs';
-const EMAILJS_SERVICE_ID = 'service_pssc8fl';
-const EMAILJS_ALMOST_TURN_TMPL = 'template_u0ytxfe';   // Almost your turn email
-const EMAILJS_TURN_TMPL = 'template_ebi2swf';          // Your turn email
+const EMAILJS_PUBLIC_KEY = 'T-ZJmQESJPMXU_G3X';
+const EMAILJS_SERVICE_ID = 'service_1vqqs89';
+const EMAILJS_ALMOST_TURN_TMPL = 'template_txnzuzc';   // Almost your turn email
+const EMAILJS_TURN_TMPL = 'template_gbdzqwk';          // Your turn email
 
 emailjs.init(EMAILJS_PUBLIC_KEY);
 

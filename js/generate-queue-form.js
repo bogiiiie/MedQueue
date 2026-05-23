@@ -1,6 +1,6 @@
 // ── EmailJS ──
-const EMAILJS_PUBLIC_KEY = 'VGT84EnFa0cMMxcs';
-const EMAILJS_SERVICE_ID = 'service_pssc8fl';
+const EMAILJS_PUBLIC_KEY = 'T-ZJmQESJPMXU_G3X';
+const EMAILJS_SERVICE_ID = 'service_1vqqs89';
 
 emailjs.init(EMAILJS_PUBLIC_KEY);
 
@@ -100,21 +100,14 @@ generateQueueForm.addEventListener('submit', async (e) => {
     sessionStorage.setItem('lastDepartment', data.department);
     sessionStorage.setItem('lastFullname', data.fullname);
 
+    // ── Clear any previous QR so status.js doesn't use a stale one ──
+    sessionStorage.removeItem('lastQRDataURL');
+
     // ── Send "Almost Your Turn" email if position is 1 (first in line) ──
     if (data.position === 1) {
       console.log(`[AlmostTurn] Position is 1, sending almost turn email to ${email}`);
-      console.log(`[AlmostTurn] Data:`, {
-        email: email,
-        patient_name: data.fullname,
-        queue_number: data.queueNumber,
-        department: data.department,
-        counter: data.counter,
-        patients_ahead: 0,
-      });
-      
-      // Use the existing socket connection
+
       if (socket.connected) {
-        console.log(`[AlmostTurn] Socket already connected, emitting now`);
         socket.emit('notify:almost', {
           email: email,
           patient_name: data.fullname,
@@ -123,11 +116,8 @@ generateQueueForm.addEventListener('submit', async (e) => {
           counter: data.counter,
           patients_ahead: 0,
         });
-        console.log(`[AlmostTurn] Event emitted`);
       } else {
-        console.log(`[AlmostTurn] Socket not connected yet, waiting...`);
         socket.once('connect', () => {
-          console.log(`[AlmostTurn] Socket connected, emitting now`);
           socket.emit('notify:almost', {
             email: email,
             patient_name: data.fullname,
@@ -136,7 +126,6 @@ generateQueueForm.addEventListener('submit', async (e) => {
             counter: data.counter,
             patients_ahead: 0,
           });
-          console.log(`[AlmostTurn] Event emitted`);
         });
       }
     }
@@ -250,7 +239,7 @@ function showResultCard(data, email = '') {
 
     <div style="text-align:center; margin-top:0.5rem;">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-        stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" 
+        stroke="#6B7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
         style="display:inline-block; margin-bottom:4px;">
         <rect width="20" height="16" x="2" y="4" rx="2"/>
         <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
@@ -263,11 +252,11 @@ function showResultCard(data, email = '') {
 
   // Generate QR code and store reference for PDF
   generateAndStoreQR(data.queueNumber, data);
-  
+
   document.getElementById('new-queue-btn').addEventListener('click', resetForm);
 }
 
-// Store QR data URL globally for PDF access
+// ── Store QR data URL globally for PDF access ──
 let currentQRDataURL = null;
 let currentQueueData = null;
 
@@ -278,21 +267,14 @@ function generateAndStoreQR(queueNumber, queueData) {
     return;
   }
 
-  // Clear previous QR
   div.innerHTML = '';
   div.style.display = 'flex';
   div.style.justifyContent = 'center';
   div.style.alignItems = 'center';
-  
+
   // Show loading indicator
   const loadingDiv = document.createElement('div');
-  loadingDiv.style.width = '120px';
-  loadingDiv.style.height = '120px';
-  loadingDiv.style.display = 'flex';
-  loadingDiv.style.alignItems = 'center';
-  loadingDiv.style.justifyContent = 'center';
-  loadingDiv.style.fontSize = '12px';
-  loadingDiv.style.color = '#9CA3AF';
+  loadingDiv.style.cssText = 'width:120px;height:120px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9CA3AF;';
   loadingDiv.textContent = 'Generating QR...';
   div.appendChild(loadingDiv);
 
@@ -302,69 +284,67 @@ function generateAndStoreQR(queueNumber, queueData) {
     return;
   }
 
-  // Create a container for the QR code
   const qrContainer = document.createElement('div');
   qrContainer.id = 'qr-code-container';
   div.innerHTML = '';
   div.appendChild(qrContainer);
 
-  // Generate QR code
   new QRCode(qrContainer, {
     text: queueNumber,
     width: 120,
     height: 120,
     colorDark: '#0A0A0A',
     colorLight: '#FFFFFF',
-    correctLevel: QRCode.CorrectLevel.H
+    correctLevel: QRCode.CorrectLevel.H,
   });
 
-  // Wait for QR to be generated and capture as data URL
   const captureQRAsDataURL = () => {
-    // Try to find img element (most common)
+    // Try img element first
     const qrImg = qrContainer.querySelector('img');
     if (qrImg && qrImg.complete && qrImg.src) {
       currentQRDataURL = qrImg.src;
       currentQueueData = queueData;
-      console.log('QR captured as image data URL');
-      
-      // Attach download button event after QR is ready
-      const downloadBtn = document.getElementById('download-pdf-btn');
-      if (downloadBtn) {
-        // Remove existing listeners and add new one
-        const newDownloadBtn = downloadBtn.cloneNode(true);
-        downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
-        newDownloadBtn.addEventListener('click', () => downloadPDF());
-      }
+
+      // ── Save to sessionStorage so status.js can use it ──
+      sessionStorage.setItem('lastQRDataURL', currentQRDataURL);
+      console.log('[QR] Captured from img, saved to sessionStorage');
+
+      attachDownloadButton();
       return;
     }
-    
-    // Try to find canvas element (alternative)
+
+    // Try canvas element
     const qrCanvas = qrContainer.querySelector('canvas');
     if (qrCanvas) {
       try {
         currentQRDataURL = qrCanvas.toDataURL('image/png');
         currentQueueData = queueData;
-        console.log('QR captured from canvas as data URL');
-        
-        // Attach download button event after QR is ready
-        const downloadBtn = document.getElementById('download-pdf-btn');
-        if (downloadBtn) {
-          const newDownloadBtn = downloadBtn.cloneNode(true);
-          downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
-          newDownloadBtn.addEventListener('click', () => downloadPDF());
-        }
+
+        // ── Save to sessionStorage so status.js can use it ──
+        sessionStorage.setItem('lastQRDataURL', currentQRDataURL);
+        console.log('[QR] Captured from canvas, saved to sessionStorage');
+
+        attachDownloadButton();
         return;
       } catch (e) {
         console.warn('Failed to capture QR from canvas:', e);
       }
     }
-    
-    // If not ready, try again after a short delay
+
+    // Not ready yet, retry
     setTimeout(captureQRAsDataURL, 100);
   };
-  
-  // Start capturing after a small delay to ensure QR renders
+
   setTimeout(captureQRAsDataURL, 200);
+}
+
+function attachDownloadButton() {
+  const downloadBtn = document.getElementById('download-pdf-btn');
+  if (downloadBtn) {
+    const newDownloadBtn = downloadBtn.cloneNode(true);
+    downloadBtn.parentNode.replaceChild(newDownloadBtn, downloadBtn);
+    newDownloadBtn.addEventListener('click', () => downloadPDF());
+  }
 }
 
 function downloadPDF() {
@@ -385,7 +365,6 @@ function downloadPDF() {
   const data = currentQueueData;
   const maskedMobile = data.mobile.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 *** $3');
 
-  // Document header
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0);
@@ -429,26 +408,22 @@ function downloadPDF() {
     y += 7.5;
   });
 
-  // Add QR code using the stored data URL
   if (currentQRDataURL) {
     try {
       const qrSize = 32;
       const qrX = (W - qrSize) / 2;
       doc.addImage(currentQRDataURL, 'PNG', qrX, y + 6, qrSize, qrSize);
       y += qrSize + 10;
-      console.log('QR added to PDF successfully');
+      console.log('[PDF] QR added successfully');
     } catch (e) {
-      console.warn('QR embed failed:', e);
+      console.warn('[PDF] QR embed failed:', e);
       y += 6;
-      // Add placeholder text
       doc.setFontSize(8);
       doc.setTextColor(150);
       doc.text('QR Code', W / 2, y + 20, { align: 'center' });
     }
   } else {
-    console.warn('No QR data URL available');
     y += 6;
-    // Add placeholder text
     doc.setFontSize(8);
     doc.setTextColor(150);
     doc.text('QR Code', W / 2, y + 20, { align: 'center' });
@@ -463,14 +438,13 @@ function downloadPDF() {
   doc.text('Please stay nearby the waiting area and keep your phone on.', W / 2, y + 9, { align: 'center' });
   doc.text('Email notification will be sent before your turn.', W / 2, y + 14, { align: 'center' });
 
-  // Save the PDF
   doc.save(`QueueCard-${data.queueNumber}.pdf`);
 }
 
 function resetForm() {
-  // Reset global variables
   currentQRDataURL = null;
   currentQueueData = null;
+  sessionStorage.removeItem('lastQRDataURL');
   window.location.reload();
 }
 
